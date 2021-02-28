@@ -1,5 +1,7 @@
 from dateutil import rrule
 from discord.ext import commands # Bot Commands Frameworkのインポート
+from discord_slash import cog_ext, SlashContext
+from discord_slash.utils import manage_commands # Allows us to manage the command settings.
 from logging import getLogger
 from .modules.remind import Remind
 from .modules import setting
@@ -69,6 +71,11 @@ class ReminderCog(commands.Cog):
     async def remind_list(self, ctx: commands.Context, date:str=None, time:str=None, message:str=None):
         LOG.info('remindをlistするぜ！')
         self.remind.list(ctx)
+
+    @cog_ext.cog_slash(name="rem_test", description='test', guild_ids=guilds)
+    async def _rem_test(self, ctx: SlashContext):
+        embed = discord.Embed(title="embed test")
+        await ctx.send(content="test", embeds=[embed])
 
 # Bot本体側からコグを読み込む際に呼び出される関数。
 def setup(bot):

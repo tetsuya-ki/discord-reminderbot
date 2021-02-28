@@ -1,5 +1,6 @@
 from cogs.modules import setting
 from discord.ext import commands
+from discord_slash import SlashCommand
 from logging import basicConfig, getLogger
 
 import discord
@@ -12,6 +13,7 @@ LOG = getLogger(__name__)
 INITIAL_EXTENSIONS = [
     'cogs.testcog'
     , 'cogs.remindercog'
+    # , 'cogs.slashcog'
 ]
 
 class DiscordReminderBot(commands.Bot):
@@ -19,6 +21,7 @@ class DiscordReminderBot(commands.Bot):
     def __init__(self, command_prefix, intents):
         # スーパークラスのコンストラクタに値を渡して実行。
         super().__init__(command_prefix, case_insensitive=True, intents=intents)
+        slash = SlashCommand(self, sync_commands=True) # ココにslashをおこう！(第一引数はself)
         LOG.info('cogを読むぞ！')
 
         # INITIAL_COGSに格納されている名前から、コグを読み込む。
@@ -40,6 +43,7 @@ if __name__ == '__main__':
     intents.members = False
     intents.presences = False
 
-    bot = DiscordReminderBot(command_prefix='$', intents=intents)
+    bot = DiscordReminderBot(command_prefix='/', intents=intents)
+    # slash = SlashCommand(bot, sync_commands=True) #ここはダメ
 
     bot.run(setting.DISCORD_TOKEN)
