@@ -4,15 +4,15 @@ from discord_slash import SlashCommand
 from logging import basicConfig, getLogger
 
 import discord
-import traceback
 
 basicConfig(level=setting.LOG_LEVEL)
 LOG = getLogger(__name__)
 
 # 読み込むCogの名前を格納しておく。
 INITIAL_EXTENSIONS = [
-    'cogs.testcog'
-    , 'cogs.remindercog'
+    # 'cogs.taskcog'
+    'cogs.remindercog'
+    # , 'cogs.testcog'
     # , 'cogs.slashcog'
 ]
 
@@ -25,13 +25,8 @@ class DiscordReminderBot(commands.Bot):
         LOG.info('cogを読むぞ！')
 
         # INITIAL_COGSに格納されている名前から、コグを読み込む。
-        # エラーが発生した場合は、エラー内容を表示。
         for cog in INITIAL_EXTENSIONS:
-            self.load_extension(cog) # エラーを出したい時に使うぞ！
-            # try:
-            #     self.load_extension(cog)
-            # except Exception:
-            #     traceback.print_exc()
+            self.load_extension(cog)
 
     async def on_ready(self):
         LOG.info('We have logged in as {0.user}'.format(self))

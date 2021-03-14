@@ -101,8 +101,7 @@ first_time
 temp/
 
 # vscode
-.vscode/launch.json
-.vscode/settings.json
+.vscode/
 
 # sqlite3 db
 *.db

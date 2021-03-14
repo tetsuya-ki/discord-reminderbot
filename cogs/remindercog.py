@@ -1,5 +1,5 @@
 from dateutil import rrule
-from discord.ext import commands # Bot Commands Frameworkのインポート
+from discord.ext import tasks, commands
 from discord_slash import cog_ext, SlashContext
 from discord_slash.utils import manage_commands # Allows us to manage the command settings.
 from logging import getLogger
@@ -25,9 +25,52 @@ class ReminderCog(commands.Cog):
         self.remind.prepare() # dbを作成
         LOG.info('SQlite準備完了')
         LOG.info(self.guilds)
+        self.printer.start()
 
-    @commands.command()
-    async def remind_make(self, ctx: commands.Context, date:str=None, time:str=None, message:str=None):
+    def cog_unload(self):
+        self.printer.cancel()
+
+    @tasks.loop(seconds=5.0)
+    async def printer(self):
+        now = datetime.datetime.now()
+
+        # LOG.info(discord.utils.get(self.bot.get_all_channels()))
+        for remind in self.remind.remind_rows:
+            remind_datetime = dateutil.parser.parse(remind[1], yearfirst=True)
+            if remind_datetime <= now:
+                # リマインドを発動
+                channel = discord.utils.get(self.bot.get_all_channels(), guild__id=remind[2], id=remind[4])
+                await channel.send(remind[5])
+                # リマインドを削除
+                self.remind.delete(remind[0])
+
+                # リマインドを繰り返す場合の処理
+                
+            else:
+                break
+
+    @cog_ext.cog_slash(
+        name="remind-make"
+        , guild_ids=guilds
+        , description='remindを作成する'
+        , options=[manage_commands.create_option(
+            name = 'date',
+            description = '日付(yyyy-mm-dd形式)',
+            option_type = 3,
+            required = True)
+            , manage_commands.create_option(
+            name = 'time',
+            description = '時間(hh24:mi形式)',
+            option_type = 3,
+            required = True)
+            , manage_commands.create_option(
+            name = 'message',
+            description = 'メッセージ',
+            option_type = 3,
+            required = True)
+        ]
+    )
+    async def _remind_make(self, ctx, date:str=None, time:str=None, message:str=None):
         LOG.info('remindをmakeするぜ！')
 
         # チェック処理(存在しない場合、引数が不正な場合など)
@@ -62,20 +105,22 @@ class ReminderCog(commands.Cog):
 
         # 実際の処理(remind.pyでやる)
         self.remind.make(ctx, remind_datetime, message, status, repeat_flg, repeat_interval)
+        await ctx.respond()
 
     @commands.command()
     async def remind_delete(self, ctx: commands.Context, date:str=None, time:str=None, message:str=None):
         LOG.info('remindをdeleteするぜ！')
 
-    @commands.command()
-    async def remind_list(self, ctx: commands.Context, date:str=None, time:str=None, message:str=None):
+    @cog_ext.cog_slash(
+        name="remind-list"
+        , guild_ids=guilds
+        , description='remindを確認する'
+    )
+    async def remind_list(self, ctx):
         LOG.info('remindをlistするぜ！')
-        self.remind.list(ctx)
-
-    @cog_ext.cog_slash(name="rem_test", description='test', guild_ids=guilds)
-    async def _rem_test(self, ctx: SlashContext):
-        embed = discord.Embed(title="embed test")
-        await ctx.send(content="test", embeds=[embed])
+        rows = self.remind.list(ctx)
+        await ctx.respond()
+        await ctx.send(content=str(rows))
 
 # Bot本体側からコグを読み込む際に呼び出される関数。
 def setup(bot):
