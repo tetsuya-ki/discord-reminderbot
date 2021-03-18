@@ -4,6 +4,7 @@ from discord_slash import SlashCommand
 from logging import basicConfig, getLogger
 
 import discord
+import keep_alive
 
 basicConfig(level=setting.LOG_LEVEL)
 LOG = getLogger(__name__)
@@ -41,4 +42,6 @@ if __name__ == '__main__':
     bot = DiscordReminderBot(command_prefix='/', intents=intents)
     # slash = SlashCommand(bot, sync_commands=True) #ここはダメ
 
+    # start a server
+    keep_alive.keep_alive()
     bot.run(setting.DISCORD_TOKEN)
