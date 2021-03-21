@@ -1,11 +1,10 @@
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta, timezone
 from discord.ext import commands
 from os.path import join, dirname
 from logging import getLogger
 
 import datetime, discord, sqlite3, os
 logger = getLogger(__name__)
-
 
 class Remind:
     DATABASE = 'reminder.db'
@@ -58,36 +57,21 @@ class Remind:
             logger.info(self.remind_rows)
 
     def make(self, ctx: commands.Context, remind_datetime: datetime,
-             remind_message: str, status: str, repeat_flg: str,
-             repeat_interval: str):
+            remind_message: str, channel: int, status: str, repeat_flg: str,
+            repeat_interval: str):
         '''remindを作成'''
 
         conn = sqlite3.connect(self.FILE_PATH)
         with conn:
             cur = conn.cursor()
 
-            # raw_channel_mentionsか実行したチャンネル
-            # channel = ctx.channel.id
-
-            # TODO:一旦は無効にする！
-            # if len(ctx.message.raw_channel_mentions) > 0:
-            #     channel = ctx.message.raw_channel_mentions[0]
-            # raw_mentions, raw_role_mentions, mention_everyone(@here, @everyone)のやつ
             mention = None
-
-            # TODO:一旦は無効にする！
-            # if ctx.message.mention_everyone:
-            #     mention = '@here'
-            # elif len(ctx.message.raw_role_mentions) > 0:
-            #     mention = str(ctx.message.raw_role_mentions[0])
-            # elif len(ctx.message.raw_mentions) > 0:
-            #     mention = str(ctx.message.raw_mentions[0])
             JST = timezone(timedelta(hours=+9), 'JST')
             now = datetime.datetime.now(JST)
 
             insert_sql = 'INSERT INTO reminder_table (remind_datetime,guild,member,channel,remind_message,status,mention,repeat_flg,repeat_interval,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)'
             remind_param = (remind_datetime, ctx.guild.id, ctx.author.id,
-                            ctx.channel.id, remind_message, status, mention,
+                            channel, remind_message, status, mention,
                             repeat_flg, repeat_interval, now, now)
 
             # Insert a row of data
@@ -117,8 +101,17 @@ class Remind:
             select_sql = f'''select * from reminder_table where status = 'Progress' and guild = '{ctx.guild.id}' and member = '{ctx.author.id}' order by remind_datetime'''
             cur.execute(select_sql)
             rows = cur.fetchmany(100)
-            logger.info(rows)
-            return rows
+            message = ''
+            for row in rows:
+                repeat_message = '繰り返す' if row[8] == '1' else '繰り返さない'
+                repeat_interval_message = f'({row[9]})' if row[9] is not None else ''
+                message += f'No: {row[0]} Remind_datetime: {row[1]}\n'
+                message += f'Message: {row[5]}\n'
+                message += f'Status: {row[6]} {repeat_message}{repeat_interval_message}\n--\n'
+
+            escaped_mention_text = discord.utils.escape_mentions(message)
+            logger.info(escaped_mention_text)
+            return escaped_mention_text
 
     def list_all(self, ctx: commands.Context):
         conn = sqlite3.connect(self.FILE_PATH)
@@ -127,5 +120,13 @@ class Remind:
             select_sql = 'select * from reminder_table order by remind_datetime'
             cur.execute(select_sql)
             rows = cur.fetchmany(100)
-            logger.info(rows)
-            return rows
+            message = ''
+            for row in rows:
+                repeat_message = '繰り返す' if row[8] == '1' else '繰り返さない'
+                repeat_interval_message = f'({row[9]})' if row[9] is not None else ''
+                message += f'No: {row[0]} Remind_datetime: {row[1]}\n'
+                message += f'Message: {row[5]}\n'
+                message += f'Status: {row[6]} {repeat_message}{repeat_interval_message}\n--\n'
+            escaped_mention_text = discord.utils.escape_mentions(message)
+            logger.info(escaped_mention_text)
+            return escaped_mention_text
