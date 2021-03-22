@@ -105,3 +105,4 @@ temp/
 
 # sqlite3 db
 *.db
+*.bin

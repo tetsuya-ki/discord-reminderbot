@@ -2,6 +2,8 @@ from datetime import timedelta, timezone
 from discord.ext import commands
 from os.path import join, dirname
 from logging import getLogger
+from .aes_angou import Aes_angou
+from . import setting
 
 import datetime, discord, sqlite3, os
 logger = getLogger(__name__)
@@ -18,36 +20,51 @@ class Remind:
         self.repeat = False  # 繰り返しするかどうか
         self.repeat_interval = None
         self.remind_rows = None  # リマインドの結果
+        self.aes = Aes_angou(setting.DISCORD_TOKEN)
 
     def prepare(self):
         '''
         sqlite3のdbを準備する
         '''
-        conn = sqlite3.connect(self.FILE_PATH)
-        cur = conn.cursor()
+        if not os.path.exists(self.aes.ENC_FILE_PATH):
+            conn = sqlite3.connect(self.FILE_PATH)
+            cur = conn.cursor()
 
-        create_table_sql = '''
-                            create table if not exists reminder_table (
-                                id integer primary key autoincrement,
-                                remind_datetime datetime,
-                                guild integer,
-                                member integer,
-                                channel integer,
-                                remind_message text,
-                                status text,
-                                mention text,
-                                repeat_flg text,
-                                repeat_interval text,
-                                created_at datetime,
-                                updated_at datetime
-                            )
-                            '''
-        cur.execute(create_table_sql)
-        conn.commit()
+            create_table_sql = '''
+                                create table if not exists reminder_table (
+                                    id integer primary key autoincrement,
+                                    remind_datetime datetime,
+                                    guild integer,
+                                    member integer,
+                                    channel integer,
+                                    remind_message text,
+                                    status text,
+                                    mention text,
+                                    repeat_flg text,
+                                    repeat_interval text,
+                                    created_at datetime,
+                                    updated_at datetime
+                                )
+                                '''
+            cur.execute(create_table_sql)
+            conn.commit()
+        else:
+            self.decode()
         self.read()
         logger.info('準備完了')
 
+    def decode(self):
+        if os.path.exists(self.aes.ENC_FILE_PATH):
+            self.aes.decode()
+
+    def encode(self):
+        if os.path.exists(self.aes.DEC_FILE_PATH):
+            self.aes.encode()
+            if setting.KEEP_DECRYPTED_FILE:
+                os.remove(self.aes.DEC_FILE_PATH)
+
     def read(self):
+        # readはdecodeしない
         conn = sqlite3.connect(self.FILE_PATH)
         with conn:
             cur = conn.cursor()
@@ -60,7 +77,7 @@ class Remind:
             remind_message: str, channel: int, status: str, repeat_flg: str,
             repeat_interval: str):
         '''remindを作成'''
-
+        self.decode()
         conn = sqlite3.connect(self.FILE_PATH)
         with conn:
             cur = conn.cursor()
@@ -79,9 +96,11 @@ class Remind:
             conn.commit()
 
             self.read()
+        self.encode()
 
     def delete(self, remind_id: int):
         '''remindを削除'''
+        self.decode()
 
         conn = sqlite3.connect(self.FILE_PATH)
         with conn:
@@ -93,8 +112,10 @@ class Remind:
             conn.execute(update_sql, remind_param)
             conn.commit()
             self.read()
+        self.encode()
 
     def list(self, ctx: commands.Context):
+        self.decode()
         conn = sqlite3.connect(self.FILE_PATH)
         with conn:
             cur = conn.cursor()
@@ -111,9 +132,11 @@ class Remind:
 
             escaped_mention_text = discord.utils.escape_mentions(message)
             logger.info(escaped_mention_text)
-            return escaped_mention_text
+        self.encode()
+        return escaped_mention_text
 
     def list_all(self, ctx: commands.Context):
+        self.decode()
         conn = sqlite3.connect(self.FILE_PATH)
         with conn:
             cur = conn.cursor()
@@ -129,4 +152,5 @@ class Remind:
                 message += f'Status: {row[6]} {repeat_message}{repeat_interval_message}\n--\n'
             escaped_mention_text = discord.utils.escape_mentions(message)
             logger.info(escaped_mention_text)
-            return escaped_mention_text
+        self.encode()
+        return escaped_mention_text
