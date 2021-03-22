@@ -73,7 +73,7 @@ class Remind:
             self.remind_rows = cur.fetchmany(100)
             logger.info(self.remind_rows)
 
-    def make(self, ctx: commands.Context, remind_datetime: datetime,
+    def make(self, guild_id, author_id, remind_datetime: datetime,
             remind_message: str, channel: int, status: str, repeat_flg: str,
             repeat_interval: str):
         '''remindを作成'''
@@ -87,7 +87,7 @@ class Remind:
             now = datetime.datetime.now(JST)
 
             insert_sql = 'INSERT INTO reminder_table (remind_datetime,guild,member,channel,remind_message,status,mention,repeat_flg,repeat_interval,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)'
-            remind_param = (remind_datetime, ctx.guild.id, ctx.author.id,
+            remind_param = (remind_datetime, guild_id, author_id,
                             channel, remind_message, status, mention,
                             repeat_flg, repeat_interval, now, now)
 

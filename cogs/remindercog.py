@@ -54,6 +54,29 @@ class ReminderCog(commands.Cog):
                 self.remind.delete(remind[0])
 
                 # リマインドを繰り返す場合の処理
+                if remind[8] == '1':
+                    # remind[9](repeat_interval)に従って、次のリマインドを作成
+                    # remind_datetimeは次の日付に変換（ちょっと難しいところ）
+                    count = 0
+                    next_remind_datetime = self.calc_next_reminder_date(remind_datetime, remind[9])
+                    while(next_remind_datetime <= now):
+                        next_remind_datetime = self.calc_next_reminder_date(next_remind_datetime, remind[9])
+                        count += 1
+                        # countが100を超えた場合は異常なので、処理を中断
+                        if count > 100:
+                            LOG.warning(f'{remind[0]}の{remind[9]}を100回実行しても、現実時間に追いつかないため、None扱いとします。')
+                            next_remind_datetime = None
+                            break
+
+                    # 計算できなかったら、飛ばす
+                    if next_remind_datetime is None:
+                        LOG.warning(f'{remind[0]}の{remind[9]}が計算できなかったため、飛ばしました。')
+                        continue
+                    status = 'Progress'
+                    repeat_flg = '1'
+
+                    self.remind.make(remind[2], remind[3], next_remind_datetime, remind[5], remind[4], status, repeat_flg,
+                        remind[9])
 
             else:
                 break
@@ -75,6 +98,10 @@ class ReminderCog(commands.Cog):
                                         description='メッセージ',
                                         option_type=3,
                                         required=True),
+            manage_commands.create_option(name='repeat_interval',
+                                        description='繰り返し間隔',
+                                        option_type=3,
+                                        required=False),
             manage_commands.create_option(name='channel',
                                         description='チャンネル',
                                         option_type=3,
@@ -85,6 +112,7 @@ class ReminderCog(commands.Cog):
                         date: str = None,
                         time: str = None,
                         message: str = None,
+                        repeat_interval: str = None,
                         channel: str = None):
         LOG.info('remindをmakeするぜ！')
 
@@ -118,11 +146,14 @@ class ReminderCog(commands.Cog):
             LOG.info(e)
 
         status = 'Progress'
+
+        # 繰り返し間隔の設定
         repeat_flg = '0'
-        repeat_interval = None
+        if repeat_interval:
+            repeat_flg  = '1'
 
         # 実際の処理(remind.pyでやる)
-        self.remind.make(ctx, remind_datetime, message, channel_id, status, repeat_flg,
+        self.remind.make(ctx.guild.id, ctx.author.id, remind_datetime, message, channel_id, status, repeat_flg,
                         repeat_interval)
         await ctx.respond()
 
@@ -152,6 +183,39 @@ class ReminderCog(commands.Cog):
         await ctx.respond()
         await ctx.send(content=rows)
 
+    def calc_next_reminder_date(self, remind_datetime, repeat_interval):
+        re_minutes = r'([0-9]+)mi$'
+        m = re.match(re_minutes, repeat_interval)
+        if m:
+            return remind_datetime + relativedelta(minutes=+int(m.group(1)))
+
+        re_hours = r'([0-9]+)h$'
+        m = re.match(re_hours, repeat_interval)
+        if m:
+            return remind_datetime + relativedelta(hours=+int(m.group(1)))
+
+        re_days = r'([0-9]+)d$'
+        m = re.match(re_days, repeat_interval)
+        if m:
+            return remind_datetime + relativedelta(days=+int(m.group(1)))
+
+        re_weeks = r'([0-9]+)w$'
+        m = re.match(re_weeks, repeat_interval)
+        if m:
+            return remind_datetime + relativedelta(weeks=+int(m.group(1)))
+
+        re_months = r'([0-9]+)m$'
+        m = re.match(re_months, repeat_interval)
+        if m:
+            return remind_datetime + relativedelta(months=+int(m.group(1)))
+
+        re_years = r'([0-9])y$'
+        m = re.match(re_years, repeat_interval)
+        if m:
+            return remind_datetime + relativedelta(years=+int(m.group(1)))
+
+        # それ以外のパターンはNoneとする
+        return None
 
 # Bot本体側からコグを読み込む際に呼び出される関数。
 def setup(bot):
