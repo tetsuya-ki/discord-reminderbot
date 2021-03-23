@@ -54,29 +54,41 @@ class ReminderCog(commands.Cog):
                 self.remind.delete(remind[0])
 
                 # リマインドを繰り返す場合の処理
-                if remind[8] == '1':
-                    # remind[9](repeat_interval)に従って、次のリマインドを作成
+                if remind[9] == '1':
+                    # remind[10](repeat_interval)に従って、次のリマインドを作成
                     # remind_datetimeは次の日付に変換（ちょっと難しいところ）
                     count = 0
-                    next_remind_datetime = self.calc_next_reminder_date(remind_datetime, remind[9])
+                    next_remind_datetime = self.calc_next_reminder_date(remind_datetime, remind[10])
                     while(next_remind_datetime <= now):
-                        next_remind_datetime = self.calc_next_reminder_date(next_remind_datetime, remind[9])
+                        next_remind_datetime = self.calc_next_reminder_date(next_remind_datetime, remind[10])
                         count += 1
                         # countが100を超えた場合は異常なので、処理を中断
                         if count > 100:
-                            LOG.warning(f'{remind[0]}の{remind[9]}を100回実行しても、現実時間に追いつかないため、None扱いとします。')
+                            LOG.warning(f'No.{remind[0]}の{remind[10]}を100回実行しても、現実時間に追いつかないため、None扱いとします。')
                             next_remind_datetime = None
                             break
 
                     # 計算できなかったら、飛ばす
                     if next_remind_datetime is None:
-                        LOG.warning(f'{remind[0]}の{remind[9]}が計算できなかったため、飛ばしました。')
+                        LOG.warning(f'No.{remind[0]}の{remind[10]}が計算できなかったため、飛ばしました。')
                         continue
                     status = 'Progress'
-                    repeat_flg = '1'
 
-                    self.remind.make(remind[2], remind[3], next_remind_datetime, remind[5], remind[4], status, repeat_flg,
-                        remind[9])
+                    # 繰り返し回数のチェック
+                    repeat_count = remind[7] + 1
+                    if remind[8] is None or repeat_count < remind[8]:
+                        repeat_flg = '1'
+                    elif repeat_count > remind[8]:
+                        LOG.info(f'No.{remind[0]}のrepeat_max_count({remind[8]})を超えているため、追加をしません。')
+                        continue
+                    else:
+                        repeat_flg = '0'
+
+                    # 繰り返し時のメッセージを変更
+                    remind_message = f'{remind[5]}({repeat_count})' if repeat_count > 1 else remind[5]
+
+                    self.remind.make(remind[2], remind[3], next_remind_datetime, remind_message, remind[4], status, repeat_flg,
+                        remind[10], repeat_count, remind[8])
 
             else:
                 break
@@ -102,6 +114,10 @@ class ReminderCog(commands.Cog):
                                         description='繰り返し間隔',
                                         option_type=3,
                                         required=False),
+            manage_commands.create_option(name='repeat_max_count',
+                                        description='繰り返し最大数',
+                                        option_type=3,
+                                        required=False),
             manage_commands.create_option(name='channel',
                                         description='チャンネル',
                                         option_type=3,
@@ -113,6 +129,7 @@ class ReminderCog(commands.Cog):
                         time: str = None,
                         message: str = None,
                         repeat_interval: str = None,
+                        repeat_max_count: str = None,
                         channel: str = None):
         LOG.info('remindをmakeするぜ！')
 
@@ -152,9 +169,11 @@ class ReminderCog(commands.Cog):
         if repeat_interval:
             repeat_flg  = '1'
 
+        repeat_count = 1
+
         # 実際の処理(remind.pyでやる)
         self.remind.make(ctx.guild.id, ctx.author.id, remind_datetime, message, channel_id, status, repeat_flg,
-                        repeat_interval)
+                        repeat_interval, repeat_count, repeat_max_count)
         await ctx.respond()
 
     @commands.command()

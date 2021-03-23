@@ -39,7 +39,8 @@ class Remind:
                                     channel integer,
                                     remind_message text,
                                     status text,
-                                    mention text,
+                                    repeat_count integer,
+                                    repeat_max_count integer,
                                     repeat_flg text,
                                     repeat_interval text,
                                     created_at datetime,
@@ -75,20 +76,19 @@ class Remind:
 
     def make(self, guild_id, author_id, remind_datetime: datetime,
             remind_message: str, channel: int, status: str, repeat_flg: str,
-            repeat_interval: str):
+            repeat_interval: str, repeat_count: int=1, repeat_max_count:int=None):
         '''remindを作成'''
         self.decode()
         conn = sqlite3.connect(self.FILE_PATH)
         with conn:
             cur = conn.cursor()
 
-            mention = None
             JST = timezone(timedelta(hours=+9), 'JST')
             now = datetime.datetime.now(JST)
 
-            insert_sql = 'INSERT INTO reminder_table (remind_datetime,guild,member,channel,remind_message,status,mention,repeat_flg,repeat_interval,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)'
+            insert_sql = 'INSERT INTO reminder_table (remind_datetime,guild,member,channel,remind_message,status,repeat_count,repeat_max_count,repeat_flg,repeat_interval,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)'
             remind_param = (remind_datetime, guild_id, author_id,
-                            channel, remind_message, status, mention,
+                            channel, remind_message, status, repeat_count, repeat_max_count,
                             repeat_flg, repeat_interval, now, now)
 
             # Insert a row of data
@@ -124,13 +124,13 @@ class Remind:
             rows = cur.fetchmany(100)
             message = ''
             for row in rows:
-                repeat_message = '繰り返す' if row[8] == '1' else '繰り返さない'
-                repeat_interval_message = f'({row[9]})' if row[9] is not None else ''
+                repeat_message = '繰り返す' if row[9] == '1' else '繰り返さない'
+                repeat_interval_message = f'({row[10]})' if row[10] is not None else ''
                 message += f'No: {row[0]} Remind_datetime: {row[1]}\n'
                 message += f'Message: {row[5]}\n'
                 message += f'Status: {row[6]} {repeat_message}{repeat_interval_message}\n--\n'
 
-            escaped_mention_text = discord.utils.escape_mentions(message)
+            escaped_mention_text = '(データがありません)' if len(message) == 0 else discord.utils.escape_mentions(message)
             logger.info(escaped_mention_text)
         self.encode()
         return escaped_mention_text
@@ -140,17 +140,18 @@ class Remind:
         conn = sqlite3.connect(self.FILE_PATH)
         with conn:
             cur = conn.cursor()
-            select_sql = 'select * from reminder_table order by remind_datetime'
+            select_sql = 'select * from reminder_table order by updated_at desc'
             cur.execute(select_sql)
             rows = cur.fetchmany(100)
             message = ''
             for row in rows:
-                repeat_message = '繰り返す' if row[8] == '1' else '繰り返さない'
-                repeat_interval_message = f'({row[9]})' if row[9] is not None else ''
+                repeat_message = '繰り返す' if row[9] == '1' else '繰り返さない'
+                repeat_interval_message = f'({row[10]})' if row[10] is not None else ''
                 message += f'No: {row[0]} Remind_datetime: {row[1]}\n'
                 message += f'Message: {row[5]}\n'
                 message += f'Status: {row[6]} {repeat_message}{repeat_interval_message}\n--\n'
-            escaped_mention_text = discord.utils.escape_mentions(message)
+            escaped_mention_text = '(データがありません)' if len(message) == 0 else discord.utils.escape_mentions(message)
             logger.info(escaped_mention_text)
         self.encode()
-        return escaped_mention_text
+        chopped_escaped_mention_text = escaped_mention_text[:1900] + ('...(省略)...' if escaped_mention_text[1900:] else '')
+        return chopped_escaped_mention_text
