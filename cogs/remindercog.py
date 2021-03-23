@@ -185,37 +185,44 @@ class ReminderCog(commands.Cog):
 
     def calc_next_reminder_date(self, remind_datetime, repeat_interval):
         re_minutes = r'([0-9]+)mi$'
-        m = re.match(re_minutes, repeat_interval)
-        if m:
-            return remind_datetime + relativedelta(minutes=+int(m.group(1)))
+        next_remind_datetime = self.re_reminder_date(re_minutes, repeat_interval, remind_datetime, 'minutes')
+        if next_remind_datetime:
+            return next_remind_datetime
 
         re_hours = r'([0-9]+)h$'
-        m = re.match(re_hours, repeat_interval)
-        if m:
-            return remind_datetime + relativedelta(hours=+int(m.group(1)))
+        next_remind_datetime = self.re_reminder_date(re_hours, repeat_interval, remind_datetime, 'hours')
+        if next_remind_datetime:
+            return next_remind_datetime
 
         re_days = r'([0-9]+)d$'
-        m = re.match(re_days, repeat_interval)
-        if m:
-            return remind_datetime + relativedelta(days=+int(m.group(1)))
+        next_remind_datetime = self.re_reminder_date(re_days, repeat_interval, remind_datetime, 'days')
+        if next_remind_datetime:
+            return next_remind_datetime
 
         re_weeks = r'([0-9]+)w$'
-        m = re.match(re_weeks, repeat_interval)
-        if m:
-            return remind_datetime + relativedelta(weeks=+int(m.group(1)))
+        next_remind_datetime = self.re_reminder_date(re_weeks, repeat_interval, remind_datetime, 'weeks')
+        if next_remind_datetime:
+            return next_remind_datetime
 
         re_months = r'([0-9]+)m$'
         m = re.match(re_months, repeat_interval)
-        if m:
-            return remind_datetime + relativedelta(months=+int(m.group(1)))
+        next_remind_datetime = self.re_reminder_date(re_months, repeat_interval, remind_datetime, 'months')
+        if next_remind_datetime:
+            return next_remind_datetime
 
         re_years = r'([0-9])y$'
-        m = re.match(re_years, repeat_interval)
-        if m:
-            return remind_datetime + relativedelta(years=+int(m.group(1)))
+        next_remind_datetime = self.re_reminder_date(re_years, repeat_interval, remind_datetime, 'years')
+        if next_remind_datetime:
+            return next_remind_datetime
 
         # それ以外のパターンはNoneとする
         return None
+
+    def re_reminder_date(self, re_str, repeat_interval, datetime, time_param_name):
+        m = re.match(re_str, repeat_interval)
+        if m:
+            param = {time_param_name:+int(m.group(1))}
+            return datetime + relativedelta(**param)
 
 # Bot本体側からコグを読み込む際に呼び出される関数。
 def setup(bot):
