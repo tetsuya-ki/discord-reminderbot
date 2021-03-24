@@ -6,7 +6,7 @@ from .aes_angou import Aes_angou
 from . import setting
 
 import datetime, discord, sqlite3, os
-logger = getLogger(__name__)
+LOG = getLogger(__name__)
 
 class Remind:
     DATABASE = 'reminder.db'
@@ -52,7 +52,7 @@ class Remind:
         else:
             self.decode()
         self.read()
-        logger.info('準備完了')
+        LOG.info('準備完了')
 
     def decode(self):
         if os.path.exists(self.aes.ENC_FILE_PATH):
@@ -72,7 +72,7 @@ class Remind:
             select_sql = '''select * from reminder_table where status = 'Progress' order by remind_datetime'''
             cur.execute(select_sql)
             self.remind_rows = cur.fetchmany(100)
-            logger.info(self.remind_rows)
+            LOG.info(self.remind_rows)
 
     def make(self, guild_id, author_id, remind_datetime: datetime,
             remind_message: str, channel: int, status: str, repeat_flg: str,
@@ -111,7 +111,6 @@ class Remind:
             update_sql = 'update reminder_table set status=?, updated_at = ? where id = ?'
             conn.execute(update_sql, remind_param)
             conn.commit()
-            self.read()
         self.encode()
 
     def list(self, ctx: commands.Context):
@@ -131,7 +130,7 @@ class Remind:
                 message += f'Status: {row[6]} {repeat_message}{repeat_interval_message}\n--\n'
 
             escaped_mention_text = '(データがありません)' if len(message) == 0 else discord.utils.escape_mentions(message)
-            logger.info(escaped_mention_text)
+            LOG.info(escaped_mention_text)
         self.encode()
         return escaped_mention_text
 
@@ -151,7 +150,7 @@ class Remind:
                 message += f'Message: {row[5]}\n'
                 message += f'Status: {row[6]} {repeat_message}{repeat_interval_message}\n--\n'
             escaped_mention_text = '(データがありません)' if len(message) == 0 else discord.utils.escape_mentions(message)
-            logger.info(escaped_mention_text)
+            LOG.info(escaped_mention_text)
         self.encode()
         chopped_escaped_mention_text = escaped_mention_text[:1900] + ('...(省略)...' if escaped_mention_text[1900:] else '')
         return chopped_escaped_mention_text
