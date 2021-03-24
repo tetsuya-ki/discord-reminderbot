@@ -66,12 +66,13 @@ class ReminderCog(commands.Cog):
                         if count > 100:
                             LOG.warning(f'No.{remind[0]}の{remind[10]}を100回実行しても、現実時間に追いつかないため、None扱いとします。')
                             next_remind_datetime = None
-                            break
+                            continue
 
                     # 計算できなかったら、飛ばす
                     if next_remind_datetime is None:
                         LOG.warning(f'No.{remind[0]}の{remind[10]}が計算できなかったため、飛ばしました。')
                         continue
+
                     status = 'Progress'
 
                     # 繰り返し回数のチェック
@@ -79,13 +80,14 @@ class ReminderCog(commands.Cog):
                     if remind[8] is None or repeat_count < remind[8]:
                         repeat_flg = '1'
                     elif repeat_count > remind[8]:
-                        LOG.info(f'No.{remind[0]}のrepeat_max_count({remind[8]})を超えているため、追加をしません。')
+                        LOG.warning(f'No.{remind[0]}のrepeat_max_count({remind[8]})を超えているため、追加をしません。')
                         continue
                     else:
                         repeat_flg = '0'
 
                     # 繰り返し時のメッセージを変更
-                    remind_message = f'{remind[5]}({repeat_count})' if repeat_count > 1 else remind[5]
+                    last_remind_message = re.sub('\(\d+\)','', remind[5])
+                    remind_message = f'{last_remind_message}({repeat_count})' if repeat_count > 1 else remind[5]
 
                     self.remind.make(remind[2], remind[3], next_remind_datetime, remind_message, remind[4], status, repeat_flg,
                         remind[10], repeat_count, remind[8])
@@ -146,8 +148,15 @@ class ReminderCog(commands.Cog):
             else:
                 channel_id = temp_channel.id
 
-        # エイリアス(特定の文字列の場合、日付に変換)
         today = datetime.date.today()
+        # 4桁の数字がない場合、先頭に付けてみる
+        nothing_year = re.search('\d{4}', date) is None
+        if '-' in date and  nothing_year:
+            date = f'{today.year}-{date}'
+        elif '/' in date and  nothing_year:
+            date = f'{today.year}/{date}'
+
+        # エイリアス(特定の文字列の場合、日付に変換)
         if date.lower().startswith('t'):
             date = today
         elif re.match(self.NUM_1keta, date):
