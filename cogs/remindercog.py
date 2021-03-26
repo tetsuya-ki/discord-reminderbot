@@ -2,6 +2,7 @@ from datetime import timedelta, timezone
 from dateutil import rrule
 from dateutil.relativedelta import relativedelta
 from discord.ext import tasks, commands
+from discord.ext.commands import context
 from discord_slash import cog_ext, SlashContext
 from discord_slash.utils import manage_commands  # Allows us to manage the command settings.
 from logging import getLogger
@@ -134,6 +135,7 @@ class ReminderCog(commands.Cog):
                         repeat_max_count: str = None,
                         channel: str = None):
         LOG.info('remindをmakeするぜ！')
+        await ctx.respond()
 
         # チェック処理(存在しない場合、引数が不正な場合など)
 
@@ -183,7 +185,7 @@ class ReminderCog(commands.Cog):
         # 実際の処理(remind.pyでやる)
         self.remind.make(ctx.guild.id, ctx.author.id, remind_datetime, message, channel_id, status, repeat_flg,
                         repeat_interval, repeat_count, repeat_max_count)
-        await ctx.respond()
+        await ctx.send('リマインドを登録しました', hidden = True)
 
     @commands.command()
     async def remind_delete(self,
