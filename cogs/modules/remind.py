@@ -111,6 +111,7 @@ class Remind:
             update_sql = 'update reminder_table set status=?, updated_at = ? where id = ?'
             conn.execute(update_sql, remind_param)
             conn.commit()
+        self.read()
         self.encode()
 
     def list(self, ctx: commands.Context):
