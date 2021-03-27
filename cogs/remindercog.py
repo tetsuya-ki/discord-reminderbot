@@ -102,7 +102,7 @@ class ReminderCog(commands.Cog):
         description='remindを作成する',
         options=[
             manage_commands.create_option(name='date',
-                                        description='日付(yyyy-mm-dd形式)、もしくは、何日後かの数字1桁',
+                                        description='日付(mm/dd形式)、もしくは、何日後かの数字1桁(0-9)。年がある場合はyyyy/mm/dd形式(yyyy-mm-ddも形式も可)',
                                         option_type=3,
                                         required=True),
             manage_commands.create_option(name='time',
@@ -114,11 +114,11 @@ class ReminderCog(commands.Cog):
                                         option_type=3,
                                         required=True),
             manage_commands.create_option(name='repeat_interval',
-                                        description='繰り返し間隔',
+                                        description='繰り返し間隔(数字に右の英字を付与：分(mi)/時間(h)/日(d)/週(w)/月(m)/年(y)か、特殊(平日/休日/月初/月末/曜日の文字列(「月水」のような)))',
                                         option_type=3,
                                         required=False),
             manage_commands.create_option(name='repeat_max_count',
-                                        description='繰り返し最大数',
+                                        description='繰り返し最大数(設定がない場合、ずっと繰り返されます)',
                                         option_type=3,
                                         required=False),
             manage_commands.create_option(name='channel',
@@ -170,8 +170,11 @@ class ReminderCog(commands.Cog):
             remind_datetime = dateutil.parser.parse(
                 f'{date} {time} +0900 (JST)', yearfirst=True)
         except ValueError as e:
-            LOG.info(f'このメッセージで不正な日時が提出されました：{ctx.message.clean_content}')
+            error_message = '不正な日時のため、リマインドを登録できませんでした'
+            LOG.info(error_message)
             LOG.info(e)
+            await ctx.send(error_message, hidden = True)
+            return
 
         status = 'Progress'
 
@@ -235,7 +238,6 @@ class ReminderCog(commands.Cog):
             return next_remind_datetime
 
         re_months = r'([0-9]+)m$'
-        m = re.match(re_months, repeat_interval)
         next_remind_datetime = self.re_reminder_date(re_months, repeat_interval, remind_datetime, 'months')
         if next_remind_datetime:
             return next_remind_datetime
