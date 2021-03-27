@@ -247,14 +247,71 @@ class ReminderCog(commands.Cog):
         if next_remind_datetime:
             return next_remind_datetime
 
+        # 月初, 月末
+        if repeat_interval == '月初':
+            return remind_datetime + relativedelta(months=+1, day=1)
+        if repeat_interval == '月末':
+            return remind_datetime + relativedelta(months=+1, day=99)
+
+        # 平日, 休日, 曜日(月火水木金土日)
+        start = remind_datetime + relativedelta(days=+1)
+        end = remind_datetime + relativedelta(weeks=+1)
+        byweekday = self.str2byweekday(repeat_interval)
+        if byweekday:
+            return self.re_reminder_date_rrule(start, end, byweekday)
+
         # それ以外のパターンはNoneとする
         return None
 
     def re_reminder_date(self, re_str, repeat_interval, datetime, time_param_name):
+        '''
+        正規表現で取り出した値を使い、次の日時を決定
+        '''
         m = re.match(re_str, repeat_interval)
         if m:
             param = {time_param_name:+int(m.group(1))}
             return datetime + relativedelta(**param)
+
+    def str2byweekday(self, string):
+        '''
+        文字列からrruleのbyweekdayに設定するリストを作成
+        '''
+        if string == '平日':
+            return [rrule.MO, rrule.TU, rrule.WE, rrule.TH, rrule.FR]
+        elif string == '休日':
+            return [rrule.SA, rrule.SU]
+        weekday_set = {}
+        for s in string:
+            if s == '月':
+                weekday_set.add(rrule.MO)
+            elif s == '火':
+                weekday_set.add(rrule.TU)
+            elif s == '水':
+                weekday_set.add(rrule.WE)
+            elif s == '木':
+                weekday_set.add(rrule.TH)
+            elif s == '金':
+                weekday_set.add(rrule.FR)
+            elif s == '土':
+                weekday_set.add(rrule.SA)
+            elif s == '日':
+                weekday_set.add(rrule.SU)
+
+        if len(weekday_set) == 0:
+            return None
+        else:
+            return list(weekday_set)
+
+    def re_reminder_date_rrule(self, start, end, byweekday):
+        '''
+        rruleを使い、次回の日付を決定
+        '''
+        rule = rrule.rrule(dtstart=start, freq=rrule.DAILY, byweekday=byweekday)
+        next_days = rule.between(start, end, inc=True)
+        if len(next_days) > 1:
+            return next_days[0]
+        else:
+            return None
 
 # Bot本体側からコグを読み込む際に呼び出される関数。
 def setup(bot):
