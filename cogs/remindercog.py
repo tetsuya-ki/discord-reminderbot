@@ -67,7 +67,7 @@ class ReminderCog(commands.Cog):
                         if count > 100:
                             LOG.warning(f'No.{remind[0]}の{remind[10]}を100回実行しても、現実時間に追いつかないため、None扱いとします。')
                             next_remind_datetime = None
-                            continue
+                            break
 
                     # 計算できなかったら、飛ばす
                     if next_remind_datetime is None:
