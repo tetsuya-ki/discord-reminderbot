@@ -6,7 +6,7 @@ from .aes_angou import Aes_angou
 from . import setting
 
 import datetime, discord, sqlite3, os
-LOG = getLogger(__name__)
+LOG = getLogger('reminderbot')
 
 class Remind:
     DATABASE = 'reminder.db'

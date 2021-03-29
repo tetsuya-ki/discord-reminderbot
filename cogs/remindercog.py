@@ -11,7 +11,7 @@ from .modules import setting
 
 import datetime, dateutil.parser, discord, re
 
-LOG = getLogger(__name__)
+LOG = getLogger('reminderbot')
 
 
 # コグとして用いるクラスを定義。
