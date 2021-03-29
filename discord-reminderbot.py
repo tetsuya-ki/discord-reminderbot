@@ -11,10 +11,7 @@ LOG = getLogger(__name__)
 
 # 読み込むCogの名前を格納しておく。
 INITIAL_EXTENSIONS = [
-    # 'cogs.taskcog'
     'cogs.remindercog'
-    # , 'cogs.testcog'
-    # , 'cogs.slashcog'
 ]
 
 class DiscordReminderBot(commands.Bot):
@@ -40,7 +37,6 @@ if __name__ == '__main__':
     intents.presences = False
 
     bot = DiscordReminderBot(command_prefix='/', intents=intents)
-    # slash = SlashCommand(bot, sync_commands=True) #ここはダメ
 
     # start a server
     keep_alive.keep_alive()
