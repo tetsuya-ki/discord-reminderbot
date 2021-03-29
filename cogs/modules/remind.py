@@ -52,6 +52,7 @@ class Remind:
         else:
             self.decode()
         self.read()
+        self.encode()
         LOG.info('準備完了')
 
     def decode(self):
