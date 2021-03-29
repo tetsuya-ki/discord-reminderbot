@@ -83,6 +83,7 @@ class Remind:
         '''remindを作成'''
         self.decode()
         conn = sqlite3.connect(self.FILE_PATH)
+        id = None
         with conn:
             cur = conn.cursor()
 
@@ -96,10 +97,17 @@ class Remind:
 
             # Insert a row of data
             cur.execute(insert_sql, remind_param)
+
+            # get id
+            get_id_sql = 'select id from reminder_table where rowid = last_insert_rowid()'
+            cur.execute(get_id_sql)
+            id = cur.fetchone()[0]
+
             conn.commit()
 
             self.read()
         self.encode()
+        return id
 
     def update_status(self, remind_id: int, status: str=STATUS_FINISHED):
         '''remindのステータスを変更'''

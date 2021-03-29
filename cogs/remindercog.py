@@ -186,9 +186,9 @@ class ReminderCog(commands.Cog):
         repeat_count = 1
 
         # 実際の処理(remind.pyでやる)
-        self.remind.make(ctx.guild.id, ctx.author.id, remind_datetime, message, channel_id, status, repeat_flg,
+        id = self.remind.make(ctx.guild.id, ctx.author.id, remind_datetime, message, channel_id, status, repeat_flg,
                         repeat_interval, repeat_count, repeat_max_count)
-        await ctx.send('リマインドを登録しました', hidden = True)
+        await ctx.send(f'リマインドを登録しました(No.{id})', hidden = True)
 
     @cog_ext.cog_slash(
         name="remind-cancel",
