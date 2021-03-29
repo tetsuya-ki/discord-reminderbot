@@ -11,6 +11,8 @@ LOG = getLogger(__name__)
 class Remind:
     DATABASE = 'reminder.db'
     FILE_PATH = join(dirname(__file__), 'files' + os.sep + DATABASE)
+    STATUS_FINISHED = 'Finished'
+    STATUS_CANCELED = 'Canceled'
 
     def __init__(self):
         self.remind_date = None  # リマインドする日付
@@ -99,8 +101,8 @@ class Remind:
             self.read()
         self.encode()
 
-    def delete(self, remind_id: int):
-        '''remindを削除'''
+    def update_status(self, remind_id: int, status: str=STATUS_FINISHED):
+        '''remindのステータスを変更'''
         self.decode()
 
         conn = sqlite3.connect(self.FILE_PATH)
@@ -108,10 +110,11 @@ class Remind:
             JST = timezone(timedelta(hours=+9), 'JST')
             now = datetime.datetime.now(JST)
 
-            remind_param = ('Finished', now, remind_id)
+            remind_param = (status, now, remind_id)
             update_sql = 'update reminder_table set status=?, updated_at = ? where id = ?'
             conn.execute(update_sql, remind_param)
             conn.commit()
+            LOG.info(f'id:{remind_id}を{status}にしました')
         self.read()
         self.encode()
 
@@ -156,3 +159,16 @@ class Remind:
         self.encode()
         chopped_escaped_mention_text = escaped_mention_text[:1900] + ('...(省略)...' if escaped_mention_text[1900:] else '')
         return chopped_escaped_mention_text
+
+    def get(self, ctx: commands.Context, id: int):
+        self.decode()
+        conn = sqlite3.connect(self.FILE_PATH)
+        with conn:
+            cur = conn.cursor()
+            select_sql = f'''select * from reminder_table where status = 'Progress' and member = '{ctx.author.id}' and id = '{id}' '''
+            cur.execute(select_sql)
+            row = cur.fetchone()
+            escaped_mention_text = '(データがありません)' if row is None else discord.utils.escape_mentions(str(row))
+            LOG.info(escaped_mention_text)
+        self.encode()
+        return row

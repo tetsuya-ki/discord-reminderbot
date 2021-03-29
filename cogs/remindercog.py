@@ -52,7 +52,7 @@ class ReminderCog(commands.Cog):
                                             id=remind[4])
                 await channel.send(remind[5])
                 # リマインドを削除
-                self.remind.delete(remind[0])
+                self.remind.update_status(remind[0], self.remind.STATUS_FINISHED)
 
                 # リマインドを繰り返す場合の処理
                 if remind[9] == '1':
@@ -190,13 +190,42 @@ class ReminderCog(commands.Cog):
                         repeat_interval, repeat_count, repeat_max_count)
         await ctx.send('リマインドを登録しました', hidden = True)
 
-    @commands.command()
-    async def remind_delete(self,
-                            ctx: commands.Context,
-                            date: str = None,
-                            time: str = None,
-                            message: str = None):
-        LOG.info('remindをdeleteするぜ！')
+    @cog_ext.cog_slash(
+        name="remind-cancel",
+        guild_ids=guilds,
+        description='remindをキャンセルする',
+        options=[
+            manage_commands.create_option(name='cancel_no',
+                                        description='キャンセルするリマインドの番号(No)',
+                                        option_type=3,
+                                        required=True)
+        ])
+    async def remind_cancel(self,
+                            ctx,
+                            cancel_no: str):
+        await ctx.respond()
+        LOG.info('remindをcancelするぜ！')
+        # チェック
+        if not cancel_no.isdecimal():
+            invalid_number_msg = '有効な数字ではありません'
+            await ctx.send(invalid_number_msg)
+            LOG.info(invalid_number_msg)
+            return
+        
+        # コマンド実行者が指定したNoのリマインドを持っているかチェック
+        id = int(cancel_no)
+        row = self.remind.get(ctx, id)
+        if row is None:
+            cancel_id_is_none_msg = 'リマインドをキャンセルできませんでした(Noが違う可能性があります)'
+            await ctx.send(cancel_id_is_none_msg)
+            LOG.info(cancel_id_is_none_msg)
+            return
+
+        # リマインドをキャンセル
+        self.remind.update_status(id, self.remind.STATUS_CANCELED)
+        cancel_msg = f'リマインドをキャンセルしました({cancel_no})'
+        await ctx.send(cancel_msg)
+        LOG.info(cancel_msg)
 
     @cog_ext.cog_slash(name="remind-list",
                         guild_ids=guilds,
