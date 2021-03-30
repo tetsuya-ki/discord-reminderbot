@@ -1,20 +1,41 @@
 from cogs.modules import setting
 from discord.ext import commands
 from discord_slash import SlashCommand
-from logging import basicConfig, getLogger
-
-import discord
+from logging import basicConfig, getLogger, StreamHandler, FileHandler, Formatter, NOTSET
+from datetime import timedelta, timezone
+import discord, os, datetime
 import keep_alive
 
-basicConfig(level=setting.LOG_LEVEL)
-LOG = getLogger(__name__)
+# 時間
+JST = timezone(timedelta(hours=9), 'JST')
+now = datetime.datetime.now(JST)
+
+# ストリームハンドラの設定
+stream_handler = StreamHandler()
+stream_handler.setLevel(setting.LOG_LEVEL)
+stream_handler.setFormatter(Formatter("%(asctime)s@ %(name)s [%(levelname)s] %(funcName)s: %(message)s"))
+
+# 保存先の有無チェック
+if not os.path.isdir('./Log'):
+    os.makedirs('./Log', exist_ok=True)
+
+# ファイルハンドラの設定
+file_handler = FileHandler(
+    f"./Log/log-{now:%Y%m%d_%H%M%S}.log"
+)
+file_handler.setLevel(setting.LOG_LEVEL)
+file_handler.setFormatter(
+    Formatter("%(asctime)s@ %(name)s [%(levelname)s] %(funcName)s: %(message)s")
+)
+
+# ルートロガーの設定
+basicConfig(level=NOTSET, handlers=[stream_handler, file_handler])
+
+LOG = getLogger('reminderbot')
 
 # 読み込むCogの名前を格納しておく。
 INITIAL_EXTENSIONS = [
-    # 'cogs.taskcog'
     'cogs.remindercog'
-    # , 'cogs.testcog'
-    # , 'cogs.slashcog'
 ]
 
 class DiscordReminderBot(commands.Bot):
@@ -40,7 +61,6 @@ if __name__ == '__main__':
     intents.presences = False
 
     bot = DiscordReminderBot(command_prefix='/', intents=intents)
-    # slash = SlashCommand(bot, sync_commands=True) #ここはダメ
 
     # start a server
     keep_alive.keep_alive()

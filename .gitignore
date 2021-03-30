@@ -100,8 +100,12 @@ first_time
 # temp
 temp/
 
+# Log
+Log/
+
 # vscode
 .vscode/
 
 # sqlite3 db
 *.db
+*.bin
