@@ -60,6 +60,7 @@ class Remind:
     def decode(self):
         if os.path.exists(self.aes.ENC_FILE_PATH):
             self.aes.decode()
+            os.remove(self.aes.ENC_FILE_PATH)
 
     def encode(self):
         if os.path.exists(self.aes.DEC_FILE_PATH):
