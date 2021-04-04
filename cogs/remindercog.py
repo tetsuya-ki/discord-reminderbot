@@ -135,7 +135,6 @@ class ReminderCog(commands.Cog):
                         repeat_max_count: str = None,
                         channel: str = None):
         LOG.info('remindをmakeするぜ！')
-        await ctx.respond()
 
         # チェック処理(存在しない場合、引数が不正な場合など)
 
@@ -203,7 +202,6 @@ class ReminderCog(commands.Cog):
     async def remind_cancel(self,
                             ctx,
                             cancel_no: str):
-        await ctx.respond()
         LOG.info('remindをcancelするぜ！')
         # チェック
         if not cancel_no.isdecimal():
@@ -233,7 +231,6 @@ class ReminderCog(commands.Cog):
     async def remind_list(self, ctx):
         LOG.info('remindをlistするぜ！')
         rows = self.remind.list(ctx)
-        await ctx.respond()
         await ctx.send(content=rows)
 
     @cog_ext.cog_slash(name="remind-list-all",
@@ -242,7 +239,6 @@ class ReminderCog(commands.Cog):
     async def _remind_list_all(self, ctx):
         LOG.info('remindをlistするぜ！')
         rows = self.remind.list_all(ctx)
-        await ctx.respond()
         await ctx.send(content=rows)
 
     def calc_next_reminder_date(self, remind_datetime, repeat_interval):
