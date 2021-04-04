@@ -30,27 +30,27 @@ class Remind:
         '''
         if not os.path.exists(self.aes.ENC_FILE_PATH):
             conn = sqlite3.connect(self.FILE_PATH)
-            cur = conn.cursor()
+            with conn:
+                cur = conn.cursor()
 
-            create_table_sql = '''
-                                create table if not exists reminder_table (
-                                    id integer primary key autoincrement,
-                                    remind_datetime datetime,
-                                    guild integer,
-                                    member integer,
-                                    channel integer,
-                                    remind_message text,
-                                    status text,
-                                    repeat_count integer,
-                                    repeat_max_count integer,
-                                    repeat_flg text,
-                                    repeat_interval text,
-                                    created_at datetime,
-                                    updated_at datetime
-                                )
-                                '''
-            cur.execute(create_table_sql)
-            conn.commit()
+                create_table_sql = '''
+                                    create table if not exists reminder_table (
+                                        id integer primary key autoincrement,
+                                        remind_datetime datetime,
+                                        guild integer,
+                                        member integer,
+                                        channel integer,
+                                        remind_message text,
+                                        status text,
+                                        repeat_count integer,
+                                        repeat_max_count integer,
+                                        repeat_flg text,
+                                        repeat_interval text,
+                                        created_at datetime,
+                                        updated_at datetime
+                                    )
+                                    '''
+                cur.execute(create_table_sql)
         else:
             self.decode()
         self.read()
@@ -102,9 +102,6 @@ class Remind:
             get_id_sql = 'select id from reminder_table where rowid = last_insert_rowid()'
             cur.execute(get_id_sql)
             id = cur.fetchone()[0]
-
-            conn.commit()
-
             self.read()
         self.encode()
         return id
@@ -121,7 +118,6 @@ class Remind:
             remind_param = (status, now, remind_id)
             update_sql = 'update reminder_table set status=?, updated_at = ? where id = ?'
             conn.execute(update_sql, remind_param)
-            conn.commit()
             LOG.info(f'id:{remind_id}を{status}にしました')
         self.read()
         self.encode()
