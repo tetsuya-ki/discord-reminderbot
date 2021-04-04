@@ -75,7 +75,7 @@ class Remind:
             select_sql = '''select * from reminder_table where status = 'Progress' order by remind_datetime'''
             cur.execute(select_sql)
             self.remind_rows = cur.fetchmany(100)
-            LOG.info(self.remind_rows)
+            LOG.info(f'＊＊＊＊＊＊読み込みが完了しました＊＊＊＊＊＊\n{self.remind_rows}')
 
     def make(self, guild_id, author_id, remind_datetime: datetime,
             remind_message: str, channel: int, status: str, repeat_flg: str,
@@ -102,6 +102,8 @@ class Remind:
             get_id_sql = 'select id from reminder_table where rowid = last_insert_rowid()'
             cur.execute(get_id_sql)
             id = cur.fetchone()[0]
+            LOG.debug(f'id:{id}を追加しました')
+            conn.commit()
             self.read()
         self.encode()
         return id

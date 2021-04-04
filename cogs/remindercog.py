@@ -40,6 +40,7 @@ class ReminderCog(commands.Cog):
     @tasks.loop(seconds=20.0)
     async def printer(self):
         now = datetime.datetime.now(self.JST)
+        LOG.debug(f'printer is kicked.({now})')
 
         # LOG.info(discord.utils.get(self.bot.get_all_channels()))
         for remind in self.remind.remind_rows:
