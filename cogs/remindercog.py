@@ -234,9 +234,10 @@ class ReminderCog(commands.Cog):
         rows = self.remind.list(ctx)
         await ctx.send(content=rows)
 
+    @commands.has_permissions(administrator=True)
     @cog_ext.cog_slash(name="remind-list-all",
                         guild_ids=guilds,
-                        description='remindをぜんぶ確認する')
+                        description='<注意>remindをぜんぶ確認する(administrator権限保持者のみ実行可能です！)')
     async def _remind_list_all(self, ctx):
         LOG.info('remindをlistするぜ！')
         rows = self.remind.list_all(ctx)
@@ -338,6 +339,13 @@ class ReminderCog(commands.Cog):
             return next_days[0]
         else:
             return None
+
+    @commands.Cog.listener()
+    async def on_slash_command_error(self, ctx, ex):
+        '''
+        slash_commandでエラーが発生した場合の動く処理
+        '''
+        await ctx.send(f'エラーが発生しました({ex})', hidden = True)
 
 # Bot本体側からコグを読み込む際に呼び出される関数。
 def setup(bot):
