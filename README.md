@@ -82,8 +82,8 @@
 
 ### IS_HEROKU
 
-- Herokuで動かすかどうか(repl.itの場合も、TRUEを推奨)
-  - Herokuの場合、ファイルが削除されるので、discordの添付ファイルを使って保管を試みる
+- Herokuで動かすかどうか
+  - Herokuの場合、ファイルが削除されるので、discordの添付ファイルを使って保管を試みる(ファイルが削除されていたら、読み込む)
 - 例: IS_HEROKU=FALSE
 
 ### IS_REPLIT

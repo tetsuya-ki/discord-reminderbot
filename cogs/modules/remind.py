@@ -67,16 +67,17 @@ class Remind:
         # HerokuかRepl.itの時のみ実施
         if setting.IS_HEROKU or setting.IS_REPLIT:
             # 環境変数によって、添付ファイルのファイル名を変更する
-            file_name = self.DATABASE if setting.KEEP_DECRYPTED_FILE else self.aes.ENC_FILE
+            file_name = self.aes.ENC_FILE if setting.KEEP_DECRYPTED_FILE else self.DATABASE
             LOG.debug('Heroku mode.start get_discord_attachment_file.')
             # ファイルをチェックし、存在しなければ最初と見做す
             file_path_first_time = join(dirname(__file__), 'files' + os.sep + 'first_time')
             if (setting.IS_HEROKU and not os.path.exists(file_path_first_time)) or setting.IS_REPLIT:
-                with open(file_path_first_time, 'w') as f:
-                    now = datetime.datetime.now()
-                    f.write((now.astimezone(self.JST)).strftime('%Y/%m/%d(%a) %H:%M:%S'))
-                    LOG.debug(f'{file_path_first_time}が存在しないので、作成を試みます')
-                Attachment_file_date = None
+                if setting.IS_HEROKU:
+                    with open(file_path_first_time, 'w') as f:
+                        now = datetime.datetime.now(self.JST)
+                        f.write(now.strftime('%Y/%m/%d(%a) %H:%M:%S'))
+                        LOG.debug(f'{file_path_first_time}が存在しないので、作成を試みます')
+                attachment_file_date = None
 
                 # BotがログインしているGuildごとに繰り返す
                 for guild in self.bot.guilds:
@@ -87,19 +88,22 @@ class Remind:
                         messages = await get_control_channel.history(limit=20).flatten()
 
                         for message in messages:
-                            if len(message) != 0:
-                                LOG.debug(f'len: {len(message)}, con: {message[0].content}, attchSize:{len(message[0].attachments)}')
-                                if Attachment_file_date is not None:
-                                    LOG.debug(f'date: {Attachment_file_date} <<<<<<< {message[0].created_at}, {Attachment_file_date < message[0].created_at}')
-                            # messageがない場合以外で、file_nameが本文である場合、ファイルを取得する
-                            if len(message) != 0 and message[0].content == file_name:
-                                if len(message[0].attachments) > 0:
+                            LOG.debug(f'con: {message.content}, attchSize:{len(message.attachments)}')
+                            # message_created_at_jst = datetime.datetime(message.created_at, tzinfo=self.JST)
+                            message_created_at = message.created_at.replace(tzinfo=timezone.utc)
+                            message_created_at_jst = message_created_at.astimezone(self.JST)
+
+                            if attachment_file_date is not None:
+                                LOG.debug(f'date: {attachment_file_date} <<<<<<< {message_created_at_jst}, {attachment_file_date < message_created_at_jst}')
+                            # file_nameが本文である場合、ファイルを取得する
+                            if message.content == file_name:
+                                if len(message.attachments) > 0:
                                     # 日付が新しい場合、ファイルを取得
-                                    if Attachment_file_date is None or Attachment_file_date < message[0].created_at:
-                                        Attachment_file_date = message[0].created_at
+                                    if attachment_file_date is None or attachment_file_date < message_created_at_jst:
+                                        attachment_file_date = message_created_at_jst
                                         file_path = join(dirname(__file__), 'files' + os.sep + file_name)
-                                        await message[0].attachments[0].save(file_path)
-                                        LOG.info(f'channel_file_save:{guild.name}')
+                                        await message.attachments[0].save(file_path)
+                                        LOG.info(f'channel_file_save:{guild.name} / datetime:{attachment_file_date.strftime("%Y/%m/%d(%a) %H:%M:%S")}')
                                         break
                     else:
                         LOG.warning(f'{guild}: に所定のチャンネルがありません')
@@ -112,7 +116,7 @@ class Remind:
         # HerokuかRepl.itの時のみ実施
         if setting.IS_HEROKU or setting.IS_REPLIT:
             # 環境変数によって、添付ファイルのファイル名を変更する
-            file_name = self.DATABASE if setting.KEEP_DECRYPTED_FILE else self.aes.ENC_FILE
+            file_name = self.aes.ENC_FILE if setting.KEEP_DECRYPTED_FILE else self.DATABASE
             LOG.debug('Heroku mode.start set_discord_attachment_file.')
 
             # チャンネルをチェック(チャンネルが存在しない場合は勝手に作成する)
