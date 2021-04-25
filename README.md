@@ -56,6 +56,42 @@
 
 ### その他のコマンドは検討中です(リマインドの削除など実装予定)
 
+## 環境変数
+
+### DISCORD_TOKEN
+
+- あなたのDiscordのトークンを記載（トークンは厳重に管理し、公開されないよう配慮すること！）
+- 例: DISCORD_TOKEN="fdj2iur928u42q4u239858290"
+
+### LOG_LEVEL
+
+- ログレベル(DEBUG/INFO/WARNING/ERROR)
+- 例: LOG_LEVEL="INFO"
+
+### ENABLE_SLASH_COMMAND_GUILD_ID_LIST
+
+- スラッシュコマンドを有効にするギルドID(複数ある場合は「;」を間に挟むこと)
+- 例
+  - 1件の場合: ENABLE_SLASH_COMMAND_GUILD_ID_LIST=18471289371923
+  - 2件の場合: ENABLE_SLASH_COMMAND_GUILD_ID_LIST=18471289371923;1389103890128390
+
+### KEEP_DECRYPTED_FILE
+
+- 復号されたファイルを残すかどうか(TRUEの時のみ残す。デフォルトでは復号されたファイルは削除される)
+- 例: KEEP_DECRYPTED_FILE=FALSE
+
+### IS_HEROKU
+
+- Herokuで動かすかどうか
+  - Herokuの場合、ファイルが削除されるので、discordの添付ファイルを使って保管を試みる(ファイルが削除されていたら、読み込む)
+- 例: IS_HEROKU=FALSE
+
+### IS_REPLIT
+
+- Repl.itで動かすかどうか
+  - Repl.itの場合、sqlite3の保管が怪しいので、discordの添付ファイルを使って保管を試みる
+- 例: IS_REPLIT=TRUE
+
 ## 動かし方
 
 - wikiに書くつもりです(時期未定)

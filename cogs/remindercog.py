@@ -24,12 +24,12 @@ class ReminderCog(commands.Cog):
     # ReminderCogクラスのコンストラクタ。Botを受取り、インスタンス変数として保持。
     def __init__(self, bot):
         self.bot = bot
-        self.remind = Remind()
+        self.remind = Remind(bot)
 
     # 読み込まれた時の処理
     @commands.Cog.listener()
     async def on_ready(self):
-        self.remind.prepare()  # dbを作成
+        await self.remind.prepare()  # dbを作成
         LOG.info('SQlite準備完了')
         LOG.info(self.guilds)
         self.printer.start()
@@ -40,6 +40,7 @@ class ReminderCog(commands.Cog):
     @tasks.loop(seconds=20.0)
     async def printer(self):
         now = datetime.datetime.now(self.JST)
+        LOG.debug(f'printer is kicked.({now})')
 
         # LOG.info(discord.utils.get(self.bot.get_all_channels()))
         for remind in self.remind.remind_rows:
@@ -52,7 +53,7 @@ class ReminderCog(commands.Cog):
                                             id=remind[4])
                 await channel.send(remind[5])
                 # リマインドを削除
-                self.remind.update_status(remind[0], self.remind.STATUS_FINISHED)
+                await self.remind.update_status(remind[0], remind[2], self.remind.STATUS_FINISHED)
 
                 # リマインドを繰り返す場合の処理
                 if remind[9] == '1':
@@ -90,8 +91,9 @@ class ReminderCog(commands.Cog):
                     last_remind_message = re.sub('\(\d+\)','', remind[5])
                     remind_message = f'{last_remind_message}({repeat_count})' if repeat_count > 1 else remind[5]
 
-                    self.remind.make(remind[2], remind[3], next_remind_datetime, remind_message, remind[4], status, repeat_flg,
+                    id = await self.remind.make(remind[2], remind[3], next_remind_datetime, remind_message, remind[4], status, repeat_flg,
                         remind[10], repeat_count, remind[8])
+                    await channel.send(f'次回のリマインドを登録しました(No.{id})')
 
             else:
                 break
@@ -135,7 +137,6 @@ class ReminderCog(commands.Cog):
                         repeat_max_count: str = None,
                         channel: str = None):
         LOG.info('remindをmakeするぜ！')
-        await ctx.respond()
 
         # チェック処理(存在しない場合、引数が不正な場合など)
 
@@ -186,7 +187,7 @@ class ReminderCog(commands.Cog):
         repeat_count = 1
 
         # 実際の処理(remind.pyでやる)
-        id = self.remind.make(ctx.guild.id, ctx.author.id, remind_datetime, message, channel_id, status, repeat_flg,
+        id = await self.remind.make(ctx.guild.id, ctx.author.id, remind_datetime, message, channel_id, status, repeat_flg,
                         repeat_interval, repeat_count, repeat_max_count)
         await ctx.send(f'リマインドを登録しました(No.{id})', hidden = True)
 
@@ -203,7 +204,6 @@ class ReminderCog(commands.Cog):
     async def remind_cancel(self,
                             ctx,
                             cancel_no: str):
-        await ctx.respond()
         LOG.info('remindをcancelするぜ！')
         # チェック
         if not cancel_no.isdecimal():
@@ -222,7 +222,7 @@ class ReminderCog(commands.Cog):
             return
 
         # リマインドをキャンセル
-        self.remind.update_status(id, self.remind.STATUS_CANCELED)
+        await self.remind.update_status(id, ctx.guild.id, self.remind.STATUS_CANCELED)
         cancel_msg = f'リマインドをキャンセルしました({cancel_no})'
         await ctx.send(cancel_msg)
         LOG.info(cancel_msg)
@@ -233,16 +233,15 @@ class ReminderCog(commands.Cog):
     async def remind_list(self, ctx):
         LOG.info('remindをlistするぜ！')
         rows = self.remind.list(ctx)
-        await ctx.respond()
         await ctx.send(content=rows)
 
+    @commands.has_permissions(administrator=True)
     @cog_ext.cog_slash(name="remind-list-all",
                         guild_ids=guilds,
-                        description='remindをぜんぶ確認する')
+                        description='<注意>remindをぜんぶ確認する(administrator権限保持者のみ実行可能です！)')
     async def _remind_list_all(self, ctx):
         LOG.info('remindをlistするぜ！')
         rows = self.remind.list_all(ctx)
-        await ctx.respond()
         await ctx.send(content=rows)
 
     def calc_next_reminder_date(self, remind_datetime, repeat_interval):
@@ -341,6 +340,13 @@ class ReminderCog(commands.Cog):
             return next_days[0]
         else:
             return None
+
+    @commands.Cog.listener()
+    async def on_slash_command_error(self, ctx, ex):
+        '''
+        slash_commandでエラーが発生した場合の動く処理
+        '''
+        await ctx.send(f'エラーが発生しました({ex})', hidden = True)
 
 # Bot本体側からコグを読み込む際に呼び出される関数。
 def setup(bot):
