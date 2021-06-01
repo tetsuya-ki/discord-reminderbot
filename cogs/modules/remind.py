@@ -172,6 +172,7 @@ class Remind:
         with conn:
             cur = conn.cursor()
             select_sql = '''select * from reminder_table where status = 'Progress' order by remind_datetime'''
+            LOG.debug(select_sql)
             cur.execute(select_sql)
             self.remind_rows = cur.fetchmany(100)
             LOG.info(f'＊＊＊＊＊＊読み込みが完了しました＊＊＊＊＊＊\n{self.remind_rows}')
@@ -195,6 +196,7 @@ class Remind:
 
             # Insert a row of data
             cur.execute(insert_sql, remind_param)
+            LOG.debug(insert_sql)
 
             # get id
             get_id_sql = 'select id from reminder_table where rowid = last_insert_rowid()'
@@ -220,6 +222,7 @@ class Remind:
 
             remind_param = (status, now, remind_id)
             update_sql = 'update reminder_table set status=?, updated_at = ? where id = ?'
+            LOG.debug(update_sql)
             conn.execute(update_sql, remind_param)
             LOG.info(f'id:{remind_id}を{status}にしました')
         self.read()
@@ -236,6 +239,8 @@ class Remind:
                 select_sql = f'''select * from reminder_table where status = 'Progress' and member = '{ctx.author.id}' order by remind_datetime'''
             else:
                 select_sql = f'''select * from reminder_table where status = 'Progress' and guild = '{ctx.guild.id}' and member = '{ctx.author.id}' order by remind_datetime'''
+            
+            LOG.debug(select_sql)
             cur.execute(select_sql)
             rows = cur.fetchmany(100)
             message = ''
@@ -267,6 +272,7 @@ class Remind:
             if is_guild:
                 select_sql += f'''where guild = '{ctx.guild.id}' '''
             select_sql += 'order by updated_at desc'
+            LOG.debug(select_sql)
 
             cur.execute(select_sql)
             rows = cur.fetchmany(100)
@@ -289,6 +295,7 @@ class Remind:
         with conn:
             cur = conn.cursor()
             select_sql = f'''select * from reminder_table where status = 'Progress' and member = '{ctx.author.id}' and id = '{id}' '''
+            LOG.debug(select_sql)
             cur.execute(select_sql)
             row = cur.fetchone()
             escaped_mention_text = '(データがありません)' if row is None else discord.utils.escape_mentions(str(row))
