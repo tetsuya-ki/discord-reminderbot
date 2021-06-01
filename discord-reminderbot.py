@@ -57,7 +57,7 @@ class DiscordReminderBot(commands.Bot):
 if __name__ == '__main__':
     intents = discord.Intents.all()
     intents.typing = False
-    # intents.members = False # permissionsを使ってチャンネル作成ではこの特権IntentをTrueにする必要があった
+    intents.members = False
     intents.presences = False
 
     bot = DiscordReminderBot(command_prefix='/', intents=intents)

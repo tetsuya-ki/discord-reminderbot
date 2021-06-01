@@ -127,20 +127,20 @@ class Remind:
                 permissions.append(discord.PermissionOverwrite(read_messages=False,read_message_history=False))
                 target.append(guild.default_role)
                 permissions.append(discord.PermissionOverwrite(read_messages=True,read_message_history=True))
-                target.append(guild.owner)
-                permissions.append(discord.PermissionOverwrite(read_messages=True,read_message_history=True))
                 target.append(self.bot.user)
                 overwrites = dict(zip(target, permissions))
 
                 try:
                     get_control_channel = await guild.create_text_channel(name=self.REMIND_CONTROL_CHANNEL, overwrites=overwrites)
-                    # get_control_channel = await guild.create_text_channel(name=self.REMIND_CONTROL_CHANNEL)
                     LOG.info(f'＊＊＊{self.REMIND_CONTROL_CHANNEL}を作成しました！＊＊＊')
                 except discord.errors.Forbidden:
-                    LOG.error(f'＊＊＊{self.REMIND_CONTROL_CHANNEL}の作成に失敗しました！＊＊＊')
+                    msg = f'＊＊＊{self.REMIND_CONTROL_CHANNEL}の作成に失敗しました！＊＊＊'
+                    LOG.error(msg)
+                    raise
 
                 if get_control_channel is None:
                     LOG.error(f'なんらかのエラーが発生しました')
+                    return
 
             # チャンネルの最後のメッセージを確認し、所定のメッセージなら削除する
             last_message = await get_control_channel.history(limit=1).flatten()
@@ -207,7 +207,6 @@ class Remind:
             self.read()
         self.encode()
         # Herokuの時のみ、チャンネルにファイルを添付する
-        # self.bot
         guild = discord.utils.get(self.bot.guilds, id=guild_id)
         await self.set_discord_attachment_file(guild)
         return id
