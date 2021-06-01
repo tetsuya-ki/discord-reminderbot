@@ -98,9 +98,10 @@ class ReminderCog(commands.Cog):
             else:
                 break
 
+    @commands.guild_only()
     @cog_ext.cog_slash(
         name="remind-make",
-        guild_ids=guilds,
+        # guild_ids=guilds,
         description='remindを作成する',
         options=[
             manage_commands.create_option(name='date',
@@ -193,7 +194,7 @@ class ReminderCog(commands.Cog):
 
     @cog_ext.cog_slash(
         name="remind-cancel",
-        guild_ids=guilds,
+        # guild_ids=guilds,
         description='remindをキャンセルする',
         options=[
             manage_commands.create_option(name='cancel_no',
@@ -211,7 +212,7 @@ class ReminderCog(commands.Cog):
             await ctx.send(invalid_number_msg)
             LOG.info(invalid_number_msg)
             return
-        
+
         # コマンド実行者が指定したNoのリマインドを持っているかチェック
         id = int(cancel_no)
         row = self.remind.get(ctx, id)
@@ -228,19 +229,29 @@ class ReminderCog(commands.Cog):
         LOG.info(cancel_msg)
 
     @cog_ext.cog_slash(name="remind-list",
-                        guild_ids=guilds,
+                        # guild_ids=guilds,
                         description='remindを確認する')
     async def remind_list(self, ctx):
         LOG.info('remindをlistするぜ！')
         rows = self.remind.list(ctx)
         await ctx.send(content=rows)
 
+    @commands.guild_only()
     @commands.has_permissions(administrator=True)
+    @cog_ext.cog_slash(name="remind-list-guild-all",
+                        # guild_ids=guilds,
+                        description='<注意>サーバーのremindをぜんぶ確認する(administrator権限保持者のみ実行可能です！)')
+    async def _remind_list_guild_all(self, ctx):
+        LOG.info('remindをlist(guild)するぜ！')
+        rows = self.remind.list_all_guild(ctx)
+        await ctx.send(content=rows)
+
+    @commands.dm_only()
+    @commands.is_owner()
     @cog_ext.cog_slash(name="remind-list-all",
-                        guild_ids=guilds,
-                        description='<注意>remindをぜんぶ確認する(administrator権限保持者のみ実行可能です！)')
+                        description='<注意>remindをぜんぶ確認する(BotのオーナーのみDMで実行可能です！)')
     async def _remind_list_all(self, ctx):
-        LOG.info('remindをlistするぜ！')
+        LOG.info('remindをlist(owner)するぜ！')
         rows = self.remind.list_all(ctx)
         await ctx.send(content=rows)
 

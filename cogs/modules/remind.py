@@ -232,7 +232,10 @@ class Remind:
         conn = sqlite3.connect(self.FILE_PATH)
         with conn:
             cur = conn.cursor()
-            select_sql = f'''select * from reminder_table where status = 'Progress' and guild = '{ctx.guild.id}' and member = '{ctx.author.id}' order by remind_datetime'''
+            if ctx.guild is None:
+                select_sql = f'''select * from reminder_table where status = 'Progress' and member = '{ctx.author.id}' order by remind_datetime'''
+            else:
+                select_sql = f'''select * from reminder_table where status = 'Progress' and guild = '{ctx.guild.id}' and member = '{ctx.author.id}' order by remind_datetime'''
             cur.execute(select_sql)
             rows = cur.fetchmany(100)
             message = ''
@@ -248,12 +251,23 @@ class Remind:
         self.encode()
         return escaped_mention_text
 
+    def list_all_guild(self, ctx: commands.Context):
+        return self._list_all_func(ctx, True)
+
     def list_all(self, ctx: commands.Context):
+        return self._list_all_func(ctx, False)
+
+    def _list_all_func(self, ctx: commands.Context, is_guild: bool):
         self.decode()
         conn = sqlite3.connect(self.FILE_PATH)
         with conn:
             cur = conn.cursor()
-            select_sql = 'select * from reminder_table order by updated_at desc'
+
+            select_sql = 'select * from reminder_table '
+            if is_guild:
+                select_sql += f'''where guild = '{ctx.guild.id}' '''
+            select_sql += 'order by updated_at desc'
+
             cur.execute(select_sql)
             rows = cur.fetchmany(100)
             message = ''
