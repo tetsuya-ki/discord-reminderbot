@@ -151,7 +151,7 @@ class ReminderCog(commands.Cog):
             else:
                 channel_id = temp_channel.id
 
-        today = datetime.date.today()
+        today = datetime.datetime.now(self.JST).date()
         # 4桁の数字がない場合、先頭に付けてみる
         nothing_year = re.search('\d{4}', date) is None
         if '-' in date and  nothing_year:
