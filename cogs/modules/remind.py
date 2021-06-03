@@ -127,20 +127,20 @@ class Remind:
                 permissions.append(discord.PermissionOverwrite(read_messages=False,read_message_history=False))
                 target.append(guild.default_role)
                 permissions.append(discord.PermissionOverwrite(read_messages=True,read_message_history=True))
-                target.append(guild.owner)
-                permissions.append(discord.PermissionOverwrite(read_messages=True,read_message_history=True))
                 target.append(self.bot.user)
                 overwrites = dict(zip(target, permissions))
 
                 try:
                     get_control_channel = await guild.create_text_channel(name=self.REMIND_CONTROL_CHANNEL, overwrites=overwrites)
-                    # get_control_channel = await guild.create_text_channel(name=self.REMIND_CONTROL_CHANNEL)
                     LOG.info(f'＊＊＊{self.REMIND_CONTROL_CHANNEL}を作成しました！＊＊＊')
                 except discord.errors.Forbidden:
-                    LOG.error(f'＊＊＊{self.REMIND_CONTROL_CHANNEL}の作成に失敗しました！＊＊＊')
+                    msg = f'＊＊＊{self.REMIND_CONTROL_CHANNEL}の作成に失敗しました！＊＊＊'
+                    LOG.error(msg)
+                    raise
 
                 if get_control_channel is None:
                     LOG.error(f'なんらかのエラーが発生しました')
+                    return
 
             # チャンネルの最後のメッセージを確認し、所定のメッセージなら削除する
             last_message = await get_control_channel.history(limit=1).flatten()
@@ -172,9 +172,11 @@ class Remind:
         with conn:
             cur = conn.cursor()
             select_sql = '''select * from reminder_table where status = 'Progress' order by remind_datetime'''
+            LOG.debug(select_sql)
             cur.execute(select_sql)
             self.remind_rows = cur.fetchmany(100)
-            LOG.info(f'＊＊＊＊＊＊読み込みが完了しました＊＊＊＊＊＊\n{self.remind_rows}')
+            LOG.info('＊＊＊＊＊＊読み込みが完了しました＊＊＊＊＊＊')
+            LOG.debug(self.remind_rows)
 
     async def make(self, guild_id, author_id, remind_datetime: datetime,
             remind_message: str, channel: int, status: str, repeat_flg: str,
@@ -195,6 +197,7 @@ class Remind:
 
             # Insert a row of data
             cur.execute(insert_sql, remind_param)
+            LOG.debug(insert_sql)
 
             # get id
             get_id_sql = 'select id from reminder_table where rowid = last_insert_rowid()'
@@ -205,7 +208,6 @@ class Remind:
             self.read()
         self.encode()
         # Herokuの時のみ、チャンネルにファイルを添付する
-        # self.bot
         guild = discord.utils.get(self.bot.guilds, id=guild_id)
         await self.set_discord_attachment_file(guild)
         return id
@@ -220,6 +222,7 @@ class Remind:
 
             remind_param = (status, now, remind_id)
             update_sql = 'update reminder_table set status=?, updated_at = ? where id = ?'
+            LOG.debug(update_sql)
             conn.execute(update_sql, remind_param)
             LOG.info(f'id:{remind_id}を{status}にしました')
         self.read()
@@ -232,7 +235,12 @@ class Remind:
         conn = sqlite3.connect(self.FILE_PATH)
         with conn:
             cur = conn.cursor()
-            select_sql = f'''select * from reminder_table where status = 'Progress' and guild = '{ctx.guild.id}' and member = '{ctx.author.id}' order by remind_datetime'''
+            if ctx.guild is None:
+                select_sql = f'''select * from reminder_table where status = 'Progress' and member = '{ctx.author.id}' order by remind_datetime'''
+            else:
+                select_sql = f'''select * from reminder_table where status = 'Progress' and guild = '{ctx.guild.id}' and member = '{ctx.author.id}' order by remind_datetime'''
+            
+            LOG.debug(select_sql)
             cur.execute(select_sql)
             rows = cur.fetchmany(100)
             message = ''
@@ -244,16 +252,28 @@ class Remind:
                 message += f'Status: {row[6]} {repeat_message}{repeat_interval_message}\n--\n'
 
             escaped_mention_text = '(データがありません)' if len(message) == 0 else discord.utils.escape_mentions(message)
-            LOG.info(escaped_mention_text)
+            LOG.debug(escaped_mention_text)
         self.encode()
         return escaped_mention_text
 
+    def list_all_guild(self, ctx: commands.Context):
+        return self._list_all_func(ctx, True)
+
     def list_all(self, ctx: commands.Context):
+        return self._list_all_func(ctx, False)
+
+    def _list_all_func(self, ctx: commands.Context, is_guild: bool):
         self.decode()
         conn = sqlite3.connect(self.FILE_PATH)
         with conn:
             cur = conn.cursor()
-            select_sql = 'select * from reminder_table order by updated_at desc'
+
+            select_sql = 'select * from reminder_table '
+            if is_guild:
+                select_sql += f'''where guild = '{ctx.guild.id}' '''
+            select_sql += 'order by updated_at desc'
+            LOG.debug(select_sql)
+
             cur.execute(select_sql)
             rows = cur.fetchmany(100)
             message = ''
@@ -264,7 +284,7 @@ class Remind:
                 message += f'Message: {row[5]}\n'
                 message += f'Status: {row[6]} {repeat_message}{repeat_interval_message}\n--\n'
             escaped_mention_text = '(データがありません)' if len(message) == 0 else discord.utils.escape_mentions(message)
-            LOG.info(escaped_mention_text)
+            LOG.debug(escaped_mention_text)
         self.encode()
         chopped_escaped_mention_text = escaped_mention_text[:1900] + ('...(省略)...' if escaped_mention_text[1900:] else '')
         return chopped_escaped_mention_text
@@ -275,9 +295,10 @@ class Remind:
         with conn:
             cur = conn.cursor()
             select_sql = f'''select * from reminder_table where status = 'Progress' and member = '{ctx.author.id}' and id = '{id}' '''
+            LOG.debug(select_sql)
             cur.execute(select_sql)
             row = cur.fetchone()
             escaped_mention_text = '(データがありません)' if row is None else discord.utils.escape_mentions(str(row))
-            LOG.info(escaped_mention_text)
+            LOG.debug(escaped_mention_text)
         self.encode()
         return row

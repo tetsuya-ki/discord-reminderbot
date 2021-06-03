@@ -1,6 +1,7 @@
 from cogs.modules import setting
 from discord.ext import commands
 from discord_slash import SlashCommand
+# from discord_slash.utils import manage_commands # for delete slash command
 from logging import basicConfig, getLogger, StreamHandler, FileHandler, Formatter, NOTSET
 from datetime import timedelta, timezone
 import discord, os, datetime
@@ -52,12 +53,18 @@ class DiscordReminderBot(commands.Bot):
 
     async def on_ready(self):
         LOG.info('We have logged in as {0.user}'.format(self))
+        ##### for delete slash command #####
+        # guilds = [] if setting.ENABLE_SLASH_COMMAND_GUILD_ID_LIST is None else list(
+        #     map(int, setting.ENABLE_SLASH_COMMAND_GUILD_ID_LIST.split(';')))
+        # for guild in guilds:
+        #     await manage_commands.remove_all_commands_in(self.user.id, setting.DISCORD_TOKEN, guild)
+        #     LOG.info('remove all guild command for {0}.'.format(guild))
 
 # discord-reminderbotbのインスタンス化、および、起動処理
 if __name__ == '__main__':
     intents = discord.Intents.all()
     intents.typing = False
-    # intents.members = False # permissionsを使ってチャンネル作成ではこの特権IntentをTrueにする必要があった
+    intents.members = False
     intents.presences = False
 
     bot = DiscordReminderBot(command_prefix='/', intents=intents)
