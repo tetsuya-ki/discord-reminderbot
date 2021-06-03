@@ -175,7 +175,8 @@ class Remind:
             LOG.debug(select_sql)
             cur.execute(select_sql)
             self.remind_rows = cur.fetchmany(100)
-            LOG.info(f'＊＊＊＊＊＊読み込みが完了しました＊＊＊＊＊＊\n{self.remind_rows}')
+            LOG.info('＊＊＊＊＊＊読み込みが完了しました＊＊＊＊＊＊')
+            LOG.debug(self.remind_rows)
 
     async def make(self, guild_id, author_id, remind_datetime: datetime,
             remind_message: str, channel: int, status: str, repeat_flg: str,
@@ -251,7 +252,7 @@ class Remind:
                 message += f'Status: {row[6]} {repeat_message}{repeat_interval_message}\n--\n'
 
             escaped_mention_text = '(データがありません)' if len(message) == 0 else discord.utils.escape_mentions(message)
-            LOG.info(escaped_mention_text)
+            LOG.debug(escaped_mention_text)
         self.encode()
         return escaped_mention_text
 
@@ -283,7 +284,7 @@ class Remind:
                 message += f'Message: {row[5]}\n'
                 message += f'Status: {row[6]} {repeat_message}{repeat_interval_message}\n--\n'
             escaped_mention_text = '(データがありません)' if len(message) == 0 else discord.utils.escape_mentions(message)
-            LOG.info(escaped_mention_text)
+            LOG.debug(escaped_mention_text)
         self.encode()
         chopped_escaped_mention_text = escaped_mention_text[:1900] + ('...(省略)...' if escaped_mention_text[1900:] else '')
         return chopped_escaped_mention_text
@@ -298,6 +299,6 @@ class Remind:
             cur.execute(select_sql)
             row = cur.fetchone()
             escaped_mention_text = '(データがありません)' if row is None else discord.utils.escape_mentions(str(row))
-            LOG.info(escaped_mention_text)
+            LOG.debug(escaped_mention_text)
         self.encode()
         return row
