@@ -51,13 +51,14 @@ class DiscordReminderBot(commands.Bot):
         for cog in INITIAL_EXTENSIONS:
             self.load_extension(cog)
 
+    async def on_ready(self):
+        LOG.info('We have logged in as {0.user}'.format(self))
         ##### for delete slash command #####
         # guilds = [] if setting.ENABLE_SLASH_COMMAND_GUILD_ID_LIST is None else list(
         #     map(int, setting.ENABLE_SLASH_COMMAND_GUILD_ID_LIST.split(';')))
         # for guild in guilds:
-        #     manage_commands.remove_all_commands_in(self.user.id, setting.DISCORD_TOKEN, guild)
-    async def on_ready(self):
-        LOG.info('We have logged in as {0.user}'.format(self))
+        #     await manage_commands.remove_all_commands_in(self.user.id, setting.DISCORD_TOKEN, guild)
+        #     LOG.info('remove all guild command for {0}.'.format(guild))
 
 # discord-reminderbotbのインスタンス化、および、起動処理
 if __name__ == '__main__':
