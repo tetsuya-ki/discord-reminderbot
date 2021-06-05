@@ -43,7 +43,7 @@ class DiscordReminderBot(commands.Bot):
     # MyBotのコンストラクタ。
     def __init__(self, command_prefix, intents):
         # スーパークラスのコンストラクタに値を渡して実行。
-        super().__init__(command_prefix, case_insensitive=True, intents=intents)
+        super().__init__(command_prefix, case_insensitive=True, intents=intents, help_command=None)
         slash = SlashCommand(self, sync_commands=True) # ココにslashをおこう！(第一引数はself)
         LOG.info('cogを読むぞ！')
 
