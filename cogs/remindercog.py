@@ -29,7 +29,8 @@ class ReminderCog(commands.Cog):
     # 読み込まれた時の処理
     @commands.Cog.listener()
     async def on_ready(self):
-        await self.remind.prepare()  # dbを作成
+        dm_guild = self.guilds[0] if len(self.guilds) > 0 else None
+        await self.remind.prepare(dm_guild)  # dbを作成
         LOG.info('SQlite準備完了')
         LOG.info(self.guilds)
         self.printer.start()
@@ -48,10 +49,18 @@ class ReminderCog(commands.Cog):
                                                     yearfirst=True)
             if remind_datetime <= now:
                 # リマインドを発動
-                channel = discord.utils.get(self.bot.get_all_channels(),
-                                            guild__id=remind[2],
-                                            id=remind[4])
-                await channel.send(remind[5])
+                # DMの対応
+                if remind[2] is None:
+                    remind_user = self.bot.get_user(remind[3])
+                    dm = await remind_user.create_dm()
+                    await dm.send(remind[5])
+                else:
+                    channel = discord.utils.get(self.bot.get_all_channels(),
+                                                guild__id=remind[2],
+                                                id=remind[4])
+                    if channel is not None:
+                        await channel.send(remind[5])
+
                 # リマインドを削除
                 await self.remind.update_status(remind[0], remind[2], self.remind.STATUS_FINISHED)
 
@@ -141,11 +150,22 @@ class ReminderCog(commands.Cog):
 
         # チェック処理(存在しない場合、引数が不正な場合など)
 
+        # ギルドの設定
+        guild_id = ctx.guild.id
+
         # チャンネルの設定(指定なしなら投稿されたチャンネル、指定があればそちらのチャンネルとする)
         channel_id = ctx.channel.id
         if channel is not None:
             temp_channel = discord.utils.get(ctx.guild.text_channels, name=channel)
-            if temp_channel is None:
+            if channel.upper == 'DM': # チャンネルが'DM'なら、ギルドとチャンネルをNoneとする
+                channel_id,guild_id = None,None
+                if self.remind.saved_dm_guild is None:
+                    msg = 'ギルドが何も登録されていない段階で、DMを登録することはできません。ギルドを登録してから再度リマインドの登録をしてください。'
+                    await ctx.send(msg)
+                    LOG.error(msg)
+                    return
+
+            elif temp_channel is None:
                 temp_channel_id = re.sub(r'[<#>]', '', channel)
                 if temp_channel_id.isdecimal() and '#' in channel:
                     channel_id = int(temp_channel_id)
@@ -188,7 +208,7 @@ class ReminderCog(commands.Cog):
         repeat_count = 1
 
         # 実際の処理(remind.pyでやる)
-        id = await self.remind.make(ctx.guild.id, ctx.author.id, remind_datetime, message, channel_id, status, repeat_flg,
+        id = await self.remind.make(guild_id, ctx.author.id, remind_datetime, message, channel_id, status, repeat_flg,
                         repeat_interval, repeat_count, repeat_max_count)
         await ctx.send(f'リマインドを登録しました(No.{id})', hidden = True)
 
