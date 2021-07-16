@@ -52,6 +52,11 @@ class ReminderCog(commands.Cog):
                 # DMの対応
                 if remind[2] is None:
                     remind_user = self.bot.get_user(remind[3])
+                    text = remind_user or ""
+                    LOG.debug('user id :' + str(remind[3]) + ', user:'+ text)
+                    if remind_user is None:
+                        remind_user = await self.bot.fetch_user(remind[3])
+                        text = remind_user or ""
                     dm = await remind_user.create_dm()
                     await dm.send(remind[5])
                 else:
@@ -157,7 +162,7 @@ class ReminderCog(commands.Cog):
         channel_id = ctx.channel.id
         if channel is not None:
             temp_channel = discord.utils.get(ctx.guild.text_channels, name=channel)
-            if channel.upper == 'DM': # チャンネルが'DM'なら、ギルドとチャンネルをNoneとする
+            if channel.upper() == 'DM': # チャンネルが'DM'なら、ギルドとチャンネルをNoneとする
                 channel_id,guild_id = None,None
                 if self.remind.saved_dm_guild is None:
                     msg = 'ギルドが何も登録されていない段階で、DMを登録することはできません。ギルドを登録してから再度リマインドの登録をしてください。'

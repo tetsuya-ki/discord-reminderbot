@@ -212,7 +212,7 @@ class Remind:
 
         # Herokuの時のみ、チャンネルにファイルを添付する
         if guild_id is None:
-            guild = self.saved_dm_guild
+            guild = discord.utils.get(self.bot.guilds, id=self.saved_dm_guild)
         else:
             guild = discord.utils.get(self.bot.guilds, id=guild_id)
         await self.set_discord_attachment_file(guild)
@@ -235,7 +235,7 @@ class Remind:
         self.read()
         self.encode()
         if guild_id is None:
-            guild = self.saved_dm_guild
+            guild = discord.utils.get(self.bot.guilds, id=self.saved_dm_guild)
         else:
             guild = discord.utils.get(self.bot.guilds, id=guild_id)
         await self.set_discord_attachment_file(guild)
