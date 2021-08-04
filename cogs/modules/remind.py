@@ -26,11 +26,13 @@ class Remind:
         self.repeat_interval = None
         self.remind_rows = None  # リマインドの結果
         self.aes = Aes_angou(setting.DISCORD_TOKEN)
+        self.saved_dm_guild = None
 
-    async def prepare(self):
+    async def prepare(self, guild):
         '''
         sqlite3のdbを準備する
         '''
+        self.saved_dm_guild = guild
         # Herokuの時のみ、チャンネルからファイルを取得する
         await self.get_discord_attachment_file()
 
@@ -207,9 +209,14 @@ class Remind:
             conn.commit()
             self.read()
         self.encode()
+
         # Herokuの時のみ、チャンネルにファイルを添付する
-        guild = discord.utils.get(self.bot.guilds, id=guild_id)
+        if guild_id is None:
+            guild = discord.utils.get(self.bot.guilds, id=self.saved_dm_guild)
+        else:
+            guild = discord.utils.get(self.bot.guilds, id=guild_id)
         await self.set_discord_attachment_file(guild)
+
         return id
 
     async def update_status(self, remind_id: int, guild_id: int, status: str=STATUS_FINISHED):
@@ -227,7 +234,10 @@ class Remind:
             LOG.info(f'id:{remind_id}を{status}にしました')
         self.read()
         self.encode()
-        guild = discord.utils.get(self.bot.guilds, id=guild_id)
+        if guild_id is None:
+            guild = discord.utils.get(self.bot.guilds, id=self.saved_dm_guild)
+        else:
+            guild = discord.utils.get(self.bot.guilds, id=guild_id)
         await self.set_discord_attachment_file(guild)
 
     def list(self, ctx: commands.Context):
@@ -239,7 +249,7 @@ class Remind:
                 select_sql = f'''select * from reminder_table where status = 'Progress' and member = '{ctx.author.id}' order by remind_datetime'''
             else:
                 select_sql = f'''select * from reminder_table where status = 'Progress' and guild = '{ctx.guild.id}' and member = '{ctx.author.id}' order by remind_datetime'''
-            
+
             LOG.debug(select_sql)
             cur.execute(select_sql)
             rows = cur.fetchmany(100)

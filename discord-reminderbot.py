@@ -43,7 +43,7 @@ class DiscordReminderBot(commands.Bot):
     # MyBotのコンストラクタ。
     def __init__(self, command_prefix, intents):
         # スーパークラスのコンストラクタに値を渡して実行。
-        super().__init__(command_prefix, case_insensitive=True, intents=intents)
+        super().__init__(command_prefix, case_insensitive=True, intents=intents, help_command=None)
         slash = SlashCommand(self, sync_commands=True) # ココにslashをおこう！(第一引数はself)
         LOG.info('cogを読むぞ！')
 
@@ -53,6 +53,8 @@ class DiscordReminderBot(commands.Bot):
 
     async def on_ready(self):
         LOG.info('We have logged in as {0.user}'.format(self))
+        LOG.info(f"### guilds ### \n{self.guilds}")
+
         ##### for delete slash command #####
         # guilds = [] if setting.ENABLE_SLASH_COMMAND_GUILD_ID_LIST is None else list(
         #     map(int, setting.ENABLE_SLASH_COMMAND_GUILD_ID_LIST.split(';')))

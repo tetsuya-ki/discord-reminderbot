@@ -107,3 +107,16 @@
 
 - wikiに書くつもりです(時期未定)
 - わからないことがあれば[Discussions](https://github.com/tetsuya-ki/discord-reminderbot/discussions)に書いてみてください
+
+### 前提
+
+- poetryがインストールされていること
+- `.env`が作成されていること
+
+### 動かす
+
+- 以下のコマンドを実行
+
+```sh
+poetry run python discord-reminderbot.py
+```
