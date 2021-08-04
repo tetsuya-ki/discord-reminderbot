@@ -182,6 +182,11 @@ class ReminderCog(commands.Cog):
                 temp_channel_id = re.sub(r'[<#>]', '', channel)
                 if temp_channel_id.isdecimal() and '#' in channel:
                     channel_id = int(temp_channel_id)
+                else:
+                    msg = 'チャンネル名が不正です。もう一度、適切な名前で登録してください(#チャンネル名でもOK)。'
+                    await ctx.send(msg)
+                    LOG.error(msg)
+                    return
             else:
                 channel_id = temp_channel.id
         else:
