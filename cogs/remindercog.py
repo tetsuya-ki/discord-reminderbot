@@ -29,10 +29,10 @@ class ReminderCog(commands.Cog):
     # 読み込まれた時の処理
     @commands.Cog.listener()
     async def on_ready(self):
-        dm_guild = self.guilds[0] if len(self.guilds) > 0 else None
+        dm_guild = self.bot.guilds[0].id if len(self.bot.guilds) > 0 else None
         await self.remind.prepare(dm_guild)  # dbを作成
         LOG.info('SQlite準備完了')
-        LOG.info(self.guilds)
+        LOG.debug(self.bot.guilds)
         self.printer.start()
 
     def cog_unload(self):
@@ -167,11 +167,11 @@ class ReminderCog(commands.Cog):
             channel,guild_id = None,None
 
         # チャンネルの設定(指定なしなら投稿されたチャンネル、指定があればそちらのチャンネルとする)
+        channel_id = None
         if channel is not None:
-            channel_id = ctx.channel.id
             temp_channel = discord.utils.get(ctx.guild.text_channels, name=channel)
             if channel.upper() == 'DM': # チャンネルが'DM'なら、ギルドとチャンネルをNoneとする
-                channel_id,guild_id = None,None
+                guild_id = None
                 if self.remind.saved_dm_guild is None:
                     msg = 'ギルドが何も登録されていない段階で、DMを登録することはできません。ギルドを登録してから再度リマインドの登録をしてください。'
                     await ctx.send(msg)
@@ -190,6 +190,8 @@ class ReminderCog(commands.Cog):
             else:
                 channel_id = temp_channel.id
         else:
+            channel_id = ctx.channel.id
+
             # チャンネルが設定されておらず、ギルドが無いなら、ギルドとチャンネルをNoneとする
             if guild_id is None:
                 channel_id = None
