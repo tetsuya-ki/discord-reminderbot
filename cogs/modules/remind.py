@@ -153,7 +153,7 @@ class Remind:
             # チャンネルにファイルを添付する
             file_path = join(dirname(__file__), 'files' + os.sep + file_name)
             await get_control_channel.send(file_name, file=discord.File(file_path))
-            LOG.info(f'＊＊＊{get_control_channel.name}へファイルを添付しました！＊＊＊')
+            LOG.info(f'＊＊＊{guild.name}の{get_control_channel.name}へファイルを添付しました！＊＊＊')
 
             LOG.debug('set_discord_attachment_file is over!')
 
