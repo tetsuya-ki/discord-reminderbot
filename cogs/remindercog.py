@@ -266,8 +266,11 @@ class ReminderCog(commands.Cog):
             LOG.info(cancel_id_is_none_msg)
             return
 
+        # 添付する際にギルドIDが必要なので準備する(DMの場合はNone(デフォルトのギルドへ登録する))
+        guild_id = ctx.guild.id if ctx.guild is not None else None
+
         # リマインドをキャンセル
-        await self.remind.update_status(id, ctx.guild.id, self.remind.STATUS_CANCELED)
+        await self.remind.update_status(id, guild_id, self.remind.STATUS_CANCELED)
         cancel_msg = f'リマインドをキャンセルしました(No.{cancel_no})'
         await ctx.send(cancel_msg)
         LOG.info(cancel_msg)
