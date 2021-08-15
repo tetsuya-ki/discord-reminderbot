@@ -57,8 +57,8 @@ class ReminderCog(commands.Cog):
                     if remind_user is None:
                         remind_user = await self.bot.fetch_user(remind[3])
                         text = remind_user or ""
-                    dm = await remind_user.create_dm()
-                    await dm.send(remind[5])
+                    channel = await remind_user.create_dm()
+                    await channel.send(remind[5])
                 else:
                     channel = discord.utils.get(self.bot.get_all_channels(),
                                                 guild__id=remind[2],
