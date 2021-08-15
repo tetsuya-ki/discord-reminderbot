@@ -73,20 +73,12 @@ class ReminderCog(commands.Cog):
                 if remind[9] == '1':
                     # remind[10](repeat_interval)に従って、次のリマインドを作成
                     # remind_datetimeは次の日付に変換（ちょっと難しいところ）
-                    count = 0
-                    next_remind_datetime = self.calc_next_reminder_date(remind_datetime, remind[10])
-                    while(next_remind_datetime <= now):
-                        next_remind_datetime = self.calc_next_reminder_date(next_remind_datetime, remind[10])
-                        count += 1
-                        # countが100を超えた場合は異常なので、処理を中断
-                        if count > 100:
-                            LOG.warning(f'No.{remind[0]}の{remind[10]}を100回実行しても、現実時間に追いつかないため、None扱いとします。')
-                            next_remind_datetime = None
-                            break
+                    next_remind_datetime = self.check_next_reminder_date(remind_datetime, remind[10], now,remind[0])
 
                     # 計算できなかったら、飛ばす
                     if next_remind_datetime is None:
                         LOG.warning(f'No.{remind[0]}の{remind[10]}が計算できなかったため、飛ばしました。')
+                        await channel.send(f'次回のリマインドに失敗しました(No.{remind[0]}の{remind[10]}が計算できなかったため)')
                         continue
 
                     status = 'Progress'
@@ -240,6 +232,14 @@ class ReminderCog(commands.Cog):
         # 繰り返し間隔の設定
         repeat_flg = '0'
         if repeat_interval:
+            # 間隔設定のチェック
+            now = datetime.datetime.now(self.JST)
+            next_remind_datetime = self.check_next_reminder_date(remind_datetime, repeat_interval, now)
+            if next_remind_datetime is None:
+                error_message = '繰り返し間隔が不正のため、リマインドを登録できませんでした'
+                LOG.info(error_message)
+                await ctx.send(error_message, hidden = True)
+                return
             repeat_flg  = '1'
 
         repeat_count = 1
@@ -382,32 +382,32 @@ class ReminderCog(commands.Cog):
         await ctx.send(rows, hidden = hidden)
 
     def calc_next_reminder_date(self, remind_datetime, repeat_interval):
-        re_minutes = r'([0-9]+)mi$'
+        re_minutes = r'([0-9]*)mi$'
         next_remind_datetime = self.re_reminder_date(re_minutes, repeat_interval, remind_datetime, 'minutes')
         if next_remind_datetime:
             return next_remind_datetime
 
-        re_hours = r'([0-9]+)h$'
+        re_hours = r'([0-9]*)h$'
         next_remind_datetime = self.re_reminder_date(re_hours, repeat_interval, remind_datetime, 'hours')
         if next_remind_datetime:
             return next_remind_datetime
 
-        re_days = r'([0-9]+)d$'
+        re_days = r'([0-9]*)d$'
         next_remind_datetime = self.re_reminder_date(re_days, repeat_interval, remind_datetime, 'days')
         if next_remind_datetime:
             return next_remind_datetime
 
-        re_weeks = r'([0-9]+)w$'
+        re_weeks = r'([0-9]*)w$'
         next_remind_datetime = self.re_reminder_date(re_weeks, repeat_interval, remind_datetime, 'weeks')
         if next_remind_datetime:
             return next_remind_datetime
 
-        re_months = r'([0-9]+)m$'
+        re_months = r'([0-9]*)m$'
         next_remind_datetime = self.re_reminder_date(re_months, repeat_interval, remind_datetime, 'months')
         if next_remind_datetime:
             return next_remind_datetime
 
-        re_years = r'([0-9])y$'
+        re_years = r'([1-9]?)y$'
         next_remind_datetime = self.re_reminder_date(re_years, repeat_interval, remind_datetime, 'years')
         if next_remind_datetime:
             return next_remind_datetime
@@ -434,7 +434,10 @@ class ReminderCog(commands.Cog):
         '''
         m = re.match(re_str, repeat_interval)
         if m:
-            param = {time_param_name:+int(m.group(1))}
+            next = 1 if m.group(1) == '' else int(m.group(1))
+            if next == 0:
+                return None
+            param = {time_param_name:+next}
             return datetime + relativedelta(**param)
 
     def str2byweekday(self, string):
@@ -477,6 +480,21 @@ class ReminderCog(commands.Cog):
             return next_days[0]
         else:
             return None
+
+    def check_next_reminder_date(self, remind_datetime, next, now, id='未定'):
+        count = 0
+        next_remind_datetime = self.calc_next_reminder_date(remind_datetime, next)
+        if next_remind_datetime is None:
+            return None
+        while(next_remind_datetime <= now):
+            next_remind_datetime = self.calc_next_reminder_date(next_remind_datetime, next)
+            count += 1
+            # countが100を超えた場合は異常なので、処理を中断
+            if count > 100:
+                LOG.warning(f'No.{id}の{next}を100回実行しても、現実時間に追いつかないため、None扱いとします。')
+                next_remind_datetime = None
+                break
+        return next_remind_datetime
 
     @commands.Cog.listener()
     async def on_slash_command_error(self, ctx, ex):
