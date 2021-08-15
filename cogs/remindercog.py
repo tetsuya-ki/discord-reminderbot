@@ -161,7 +161,7 @@ class ReminderCog(commands.Cog):
             if channel is not None and channel.upper() != 'DM':
                 msg = 'DMでチャンネル指定はできません。チャンネルは未指定でリマインドを登録ください。'
                 await ctx.send(msg)
-                LOG.error(msg)
+                LOG.info(msg)
                 return
 
             channel,guild_id = None,None
@@ -175,7 +175,7 @@ class ReminderCog(commands.Cog):
                 if self.remind.saved_dm_guild is None:
                     msg = 'ギルドが何も登録されていない段階で、DMを登録することはできません。ギルドを登録してから再度リマインドの登録をしてください。'
                     await ctx.send(msg)
-                    LOG.error(msg)
+                    LOG.info(msg)
                     return
 
             elif temp_channel is None:
@@ -185,7 +185,7 @@ class ReminderCog(commands.Cog):
                 else:
                     msg = 'チャンネル名が不正です。もう一度、適切な名前で登録してください(#チャンネル名でもOK)。'
                     await ctx.send(msg)
-                    LOG.error(msg)
+                    LOG.info(msg)
                     return
             else:
                 channel_id = temp_channel.id
@@ -281,7 +281,7 @@ class ReminderCog(commands.Cog):
         await ctx.send(content=rows)
 
     @commands.guild_only()
-    @commands.has_permissions(administrator=True)
+    @commands.has_guild_permissions(administrator=True)
     @cog_ext.cog_slash(name="remind-list-guild-all",
                         # guild_ids=guilds,
                         description='<注意>サーバーのremindをぜんぶ確認する(administrator権限保持者のみ実行可能です！)')
@@ -401,7 +401,16 @@ class ReminderCog(commands.Cog):
         '''
         slash_commandでエラーが発生した場合の動く処理
         '''
-        await ctx.send(f'エラーが発生しました({ex})', hidden = True)
+        try:
+            raise ex
+        except discord.ext.commands.PrivateMessageOnly:
+            await ctx.send(f'エラーが発生しました(DM(ダイレクトメッセージ)でのみ実行できます)', hidden = True)
+        except discord.ext.commands.NoPrivateMessage:
+            await ctx.send(f'エラーが発生しました(ギルドでのみ実行できます(DMやグループチャットでは実行できません))', hidden = True)
+        except discord.ext.commands.NotOwner:
+            await ctx.send(f'エラーが発生しました(Botのオーナーのみ実行できます))', hidden = True)
+        except:
+            await ctx.send(f'エラーが発生しました({ex})', hidden = True)
 
 # Bot本体側からコグを読み込む際に呼び出される関数。
 def setup(bot):
