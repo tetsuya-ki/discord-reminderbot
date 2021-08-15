@@ -268,7 +268,7 @@ class ReminderCog(commands.Cog):
 
         # リマインドをキャンセル
         await self.remind.update_status(id, ctx.guild.id, self.remind.STATUS_CANCELED)
-        cancel_msg = f'リマインドをキャンセルしました({cancel_no})'
+        cancel_msg = f'リマインドをキャンセルしました(No.{cancel_no})'
         await ctx.send(cancel_msg)
         LOG.info(cancel_msg)
 

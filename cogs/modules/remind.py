@@ -256,14 +256,7 @@ class Remind:
             LOG.debug(select_sql)
             cur.execute(select_sql)
             rows = cur.fetchmany(100)
-            message = ''
-            for row in rows:
-                repeat_message = '繰り返す' if row[9] == '1' else '繰り返さない'
-                repeat_interval_message = f'({row[10]})' if row[10] is not None else ''
-                message += f'No: {row[0]} Remind_datetime: {row[1]}\n'
-                message += f'Message: {row[5]}\n'
-                message += f'Status: {row[6]} {repeat_message}{repeat_interval_message}\n--\n'
-
+            message = self.create_message(rows)
             escaped_mention_text = '(データがありません)' if len(message) == 0 else discord.utils.escape_mentions(message)
             LOG.debug(escaped_mention_text)
         self.encode()
@@ -289,18 +282,24 @@ class Remind:
 
             cur.execute(select_sql)
             rows = cur.fetchmany(100)
-            message = ''
-            for row in rows:
-                repeat_message = '繰り返す' if row[9] == '1' else '繰り返さない'
-                repeat_interval_message = f'({row[10]})' if row[10] is not None else ''
-                message += f'No: {row[0]} Remind_datetime: {row[1]}\n'
-                message += f'Message: {row[5]}\n'
-                message += f'Status: {row[6]} {repeat_message}{repeat_interval_message}\n--\n'
+            message = self.create_message(rows)
             escaped_mention_text = '(データがありません)' if len(message) == 0 else discord.utils.escape_mentions(message)
             LOG.debug(escaped_mention_text)
         self.encode()
         chopped_escaped_mention_text = escaped_mention_text[:1900] + ('...(省略)...' if escaped_mention_text[1900:] else '')
         return chopped_escaped_mention_text
+
+    def create_message(self, rows):
+        message = ''
+        for row in rows:
+            channel = f'<#{row[4]}>' if row[4] is not None else 'DM'
+            repeat_max = str(row[8]) if row[8] is not None else '設定なし(解除するまで)'
+            repeat_interval_message = f'間隔: {row[10]}, ' if row[10] is not None else ''
+            repeat_message = f'繰り返す({repeat_interval_message}最大回数: {repeat_max})' if row[9] == '1' else '繰り返さない'
+            message += f'No. {row[0]} ' + discord.utils.escape_markdown('Remind_datetime: ') + f'{row[1]}\n'
+            message += f'Message: {row[5]}\n'
+            message += f'Status: {row[6]} {repeat_message} 通知先: {channel}\n--\n'
+        return message
 
     def get(self, ctx: commands.Context, id: int):
         self.decode()
