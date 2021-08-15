@@ -42,3 +42,4 @@ ENABLE_SLASH_COMMAND_GUILD_ID_LIST = os.environ.get('ENABLE_SLASH_COMMAND_GUILD_
 KEEP_DECRYPTED_FILE = not if_env(os.environ.get('KEEP_DECRYPTED_FILE'))
 IS_HEROKU = if_env(os.environ.get('IS_HEROKU'))
 IS_REPLIT = if_env(os.environ.get('IS_REPLIT'))
+RESTRICT_ATTACHMENT_FILE = if_env(os.environ.get('RESTRICT_ATTACHMENT_FILE'))

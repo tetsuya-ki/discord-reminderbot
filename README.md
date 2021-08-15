@@ -103,6 +103,12 @@
   - Repl.itの場合、sqlite3の保管が怪しいので、discordの添付ファイルを使って保管を試みる
 - 例: IS_REPLIT=TRUE
 
+### RESTRICT_ATTACHMENT_FILE
+
+- Bot自身が添付したファイルのみ読み込むように制限するかどうか
+  - Bot以外(他のBotや人間)が添付したファイルのみを読み込むようになります
+- 例: RESTRICT_ATTACHMENT_FILE=TRUE
+
 ## 動かし方
 
 - wikiに書くつもりです(時期未定)

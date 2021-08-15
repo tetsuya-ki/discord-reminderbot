@@ -90,6 +90,9 @@ class Remind:
                         messages = await get_control_channel.history(limit=20).flatten()
 
                         for message in messages:
+                            # 添付ファイルの読み込みを自分の投稿のみに制限する(環境変数で指定された場合のみ)
+                            if setting.RESTRICT_ATTACHMENT_FILE and  message.author != guild.me:
+                                continue
                             LOG.debug(f'con: {message.content}, attchSize:{len(message.attachments)}')
                             # message_created_at_jst = datetime.datetime(message.created_at, tzinfo=self.JST)
                             message_created_at = message.created_at.replace(tzinfo=timezone.utc)
