@@ -448,7 +448,7 @@ class ReminderCog(commands.Cog):
             return [rrule.MO, rrule.TU, rrule.WE, rrule.TH, rrule.FR]
         elif string == '休日':
             return [rrule.SA, rrule.SU]
-        weekday_set = {}
+        weekday_set = set()
         for s in string:
             if s == '月':
                 weekday_set.add(rrule.MO)
@@ -476,7 +476,7 @@ class ReminderCog(commands.Cog):
         '''
         rule = rrule.rrule(dtstart=start, freq=rrule.DAILY, byweekday=byweekday)
         next_days = rule.between(start, end, inc=True)
-        if len(next_days) > 1:
+        if len(next_days) > 0:
             return next_days[0]
         else:
             return None
