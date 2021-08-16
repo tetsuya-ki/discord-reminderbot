@@ -26,6 +26,7 @@
     - hh:mi形式(例→`23:12`)
   - message(メッセージ)
     - リマインドするメッセージ
+    - メンションしたい場合、通常のメッセージと同様に、@xxxx形式で入力してください（リマインド時にメンションされます）
 - オプション
   - repeat_interval(繰り返し間隔)
     - XX分: **XX**mi
@@ -79,8 +80,10 @@
 - ログレベル(DEBUG/INFO/WARNING/ERROR)
 - 例: LOG_LEVEL="INFO"
 
-### ENABLE_SLASH_COMMAND_GUILD_ID_LIST
+### ENABLE_SLASH_COMMAND_GUILD_ID_LIST(**使用するにはソースの修正が必要です**)
 
+- この環境変数を使用する場合、ソースの修正をしてください
+  - それぞれのメソッドにある、@cog_ext.cog_slashのguildsについてのコメントアウトを解除する必要があります
 - スラッシュコマンドを有効にするギルドID(複数ある場合は「;」を間に挟むこと)
 - 例
   - 1件の場合: ENABLE_SLASH_COMMAND_GUILD_ID_LIST=18471289371923
@@ -102,6 +105,12 @@
 - Repl.itで動かすかどうか
   - Repl.itの場合、sqlite3の保管が怪しいので、discordの添付ファイルを使って保管を試みる
 - 例: IS_REPLIT=TRUE
+
+### RESTRICT_ATTACHMENT_FILE
+
+- Bot自身が添付したファイルのみ読み込むように制限するかどうか
+  - Bot以外(他のBotや人間)が添付したファイルのみを読み込むようになります
+- 例: RESTRICT_ATTACHMENT_FILE=TRUE
 
 ## 動かし方
 
