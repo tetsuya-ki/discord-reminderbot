@@ -33,9 +33,9 @@ class ReminderCog(commands.Cog):
 
         # PRIORITY_GUILDがある場合の上書き
         if setting.PRIORITY_GUILD and setting.PRIORITY_GUILD.isdecimal():
-            pr_guild = [i for i in self.bot.guilds if i == int(setting.PRIORITY_GUILD)]
+            pr_guild = [i for i in self.bot.guilds if i.id == int(setting.PRIORITY_GUILD)]
             if len(pr_guild) > 0:
-                dm_guild = pr_guild[0]
+                dm_guild = pr_guild[0].id
         await self.remind.prepare(dm_guild)  # dbを作成
         LOG.info('SQlite準備完了')
         LOG.debug(self.bot.guilds)
