@@ -30,6 +30,12 @@ class ReminderCog(commands.Cog):
     @commands.Cog.listener()
     async def on_ready(self):
         dm_guild = self.bot.guilds[0].id if len(self.bot.guilds) > 0 else None
+
+        # PRIORITY_GUILDがある場合の上書き
+        if setting.PRIORITY_GUILD and setting.PRIORITY_GUILD.isdecimal():
+            pr_guild = [i for i in self.bot.guilds if i.id == int(setting.PRIORITY_GUILD)]
+            if len(pr_guild) > 0:
+                dm_guild = pr_guild[0].id
         await self.remind.prepare(dm_guild)  # dbを作成
         LOG.info('SQlite準備完了')
         LOG.debug(self.bot.guilds)
@@ -99,7 +105,10 @@ class ReminderCog(commands.Cog):
 
                     id = await self.remind.make(remind[2], remind[3], next_remind_datetime, remind_message, remind[4], status, repeat_flg,
                         remind[10], repeat_count, remind[8])
-                    await channel.send(f'次回のリマインドを登録しました(No.{id})')
+                    if channel:
+                        await channel.send(f'次回のリマインドを登録しました(No.{id})')
+                    else:
+                        LOG.error(f'channelがないので、メッセージ送れませんでした！(No.{id})')
 
             else:
                 break
@@ -380,6 +389,34 @@ class ReminderCog(commands.Cog):
         rows = self.remind.list_all(ctx)
         hidden = True if reply_is_hidden == 'True' else False
         await ctx.send(rows, hidden = hidden)
+
+    @commands.is_owner()
+    @cog_ext.cog_slash(
+        name='remind-task-check',
+        description='<注意>remindのTaskを確認する(Botのオーナーのみ実行可能です！)',
+        options=[
+            manage_commands.create_option(name='reply_is_hidden',
+                                        description='Botの実行結果を全員に見せるどうか',
+                                        option_type=3,
+                                        required=False,
+                                        choices=[
+                                            manage_commands.create_choice(
+                                            name='自分のみ',
+                                            value='True'),
+                                            manage_commands.create_choice(
+                                            name='全員に見せる',
+                                            value='False')
+                                        ])
+        ])
+    async def _remind_tasl_check(self, ctx, reply_is_hidden: str = 'True'):
+        LOG.info('remindのTaskを確認(owner)するぜ！')
+        msg = 'Taskは問題なく起動しています。'
+        if not self.printer.is_running():
+            msg = 'Taskが停止していたので再起動します。'
+            LOG.info(msg)
+            self.printer.start()
+        hidden = True if reply_is_hidden == 'True' else False
+        await ctx.send(msg, hidden = hidden)
 
     def calc_next_reminder_date(self, remind_datetime, repeat_interval):
         re_minutes = r'([0-9]*)mi$'

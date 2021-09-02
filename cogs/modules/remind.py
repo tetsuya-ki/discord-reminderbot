@@ -87,7 +87,12 @@ class Remind:
                     LOG.debug(f'{guild}: チャンネル読み込み')
                     get_control_channel = discord.utils.get(guild.text_channels, name=self.REMIND_CONTROL_CHANNEL)
                     if get_control_channel is not None:
-                        messages = await get_control_channel.history(limit=20).flatten()
+                        try:
+                            messages = await get_control_channel.history(limit=20).flatten()
+                        except discord.errors.Forbidden:
+                            msg = f'＊＊＊{guild}のチャンネル({self.REMIND_CONTROL_CHANNEL})読み込みに失敗しました！＊＊＊'
+                            LOG.error(msg)
+                            continue
 
                         for message in messages:
                             # 添付ファイルの読み込みを自分の投稿のみに制限する(環境変数で指定された場合のみ)
@@ -125,6 +130,8 @@ class Remind:
             LOG.debug('Heroku mode.start set_discord_attachment_file.')
 
             # チャンネルをチェック(チャンネルが存在しない場合は勝手に作成する)
+            if guild == None: # ありえないと思うけれど、guildがないならDMと同じ対応する
+                guild = discord.utils.get(self.bot.guilds, id=self.saved_dm_guild)
             get_control_channel = discord.utils.get(guild.text_channels, name=self.REMIND_CONTROL_CHANNEL)
             if get_control_channel is None:
                 permissions = []
@@ -148,7 +155,15 @@ class Remind:
                     return
 
             # チャンネルの最後のメッセージを確認し、所定のメッセージなら削除する
-            last_message = await get_control_channel.history(limit=1).flatten()
+            try:
+                last_message = await get_control_channel.history(limit=1).flatten()
+            except discord.errors.Forbidden:
+                # エラーが発生したら、適当に対応
+                msg = f'＊＊＊{guild}のチャンネル({self.REMIND_CONTROL_CHANNEL})読み込みに失敗しました！＊＊＊'
+                LOG.error(msg)
+                guild = discord.utils.get(self.bot.guilds, id=self.saved_dm_guild)
+                get_control_channel = discord.utils.get(guild.text_channels, name=self.REMIND_CONTROL_CHANNEL)
+                last_message = await get_control_channel.history(limit=1).flatten()
             if len(last_message) != 0:
                 if last_message[0].content == file_name:
                     await get_control_channel.purge(limit=1)
@@ -213,12 +228,20 @@ class Remind:
             self.read()
         self.encode()
 
-        # Herokuの時のみ、チャンネルにファイルを添付する
+        # 添付対象のギルドの決定
         if guild_id is None:
             guild = discord.utils.get(self.bot.guilds, id=self.saved_dm_guild)
         else:
             guild = discord.utils.get(self.bot.guilds, id=guild_id)
-        await self.set_discord_attachment_file(guild)
+
+        # Herokuの時のみ、チャンネルにファイルを添付する
+        try:
+            await self.set_discord_attachment_file(guild)
+        except discord.errors.Forbidden:
+            msg = f'＊＊＊{guild.name}へのチャンネル作成に失敗したため、dm_guildへ添付します＊＊＊'
+            LOG.info(msg)
+            guild = discord.utils.get(self.bot.guilds, id=self.saved_dm_guild)
+            await self.set_discord_attachment_file(guild)
 
         return id
 
@@ -237,11 +260,21 @@ class Remind:
             LOG.info(f'id:{remind_id}を{status}にしました')
         self.read()
         self.encode()
+
+        # 添付対象のギルドの決定
         if guild_id is None:
             guild = discord.utils.get(self.bot.guilds, id=self.saved_dm_guild)
         else:
             guild = discord.utils.get(self.bot.guilds, id=guild_id)
-        await self.set_discord_attachment_file(guild)
+
+        # Herokuの時のみ、チャンネルにファイルを添付する
+        try:
+            await self.set_discord_attachment_file(guild)
+        except discord.errors.Forbidden:
+            msg = f'＊＊＊{guild.name}へのチャンネル作成に失敗したため、dm_guildへ添付します＊＊＊'
+            LOG.info(msg)
+            guild = discord.utils.get(self.bot.guilds, id=self.saved_dm_guild)
+            await self.set_discord_attachment_file(guild)
 
     def list(self, ctx: commands.Context):
         self.decode()
