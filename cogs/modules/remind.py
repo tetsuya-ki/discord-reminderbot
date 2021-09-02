@@ -228,12 +228,20 @@ class Remind:
             self.read()
         self.encode()
 
-        # Herokuの時のみ、チャンネルにファイルを添付する
+        # 添付対象のギルドの決定
         if guild_id is None:
             guild = discord.utils.get(self.bot.guilds, id=self.saved_dm_guild)
         else:
             guild = discord.utils.get(self.bot.guilds, id=guild_id)
-        await self.set_discord_attachment_file(guild)
+
+        # Herokuの時のみ、チャンネルにファイルを添付する
+        try:
+            await self.set_discord_attachment_file(guild)
+        except discord.errors.Forbidden:
+            msg = f'＊＊＊{guild.name}へのチャンネル作成に失敗したため、dm_guildへ添付します＊＊＊'
+            LOG.info(msg)
+            guild = discord.utils.get(self.bot.guilds, id=self.saved_dm_guild)
+            await self.set_discord_attachment_file(guild)
 
         return id
 
@@ -252,11 +260,21 @@ class Remind:
             LOG.info(f'id:{remind_id}を{status}にしました')
         self.read()
         self.encode()
+
+        # 添付対象のギルドの決定
         if guild_id is None:
             guild = discord.utils.get(self.bot.guilds, id=self.saved_dm_guild)
         else:
             guild = discord.utils.get(self.bot.guilds, id=guild_id)
-        await self.set_discord_attachment_file(guild)
+
+        # Herokuの時のみ、チャンネルにファイルを添付する
+        try:
+            await self.set_discord_attachment_file(guild)
+        except discord.errors.Forbidden:
+            msg = f'＊＊＊{guild.name}へのチャンネル作成に失敗したため、dm_guildへ添付します＊＊＊'
+            LOG.info(msg)
+            guild = discord.utils.get(self.bot.guilds, id=self.saved_dm_guild)
+            await self.set_discord_attachment_file(guild)
 
     def list(self, ctx: commands.Context):
         self.decode()
