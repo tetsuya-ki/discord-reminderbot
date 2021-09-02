@@ -390,6 +390,34 @@ class ReminderCog(commands.Cog):
         hidden = True if reply_is_hidden == 'True' else False
         await ctx.send(rows, hidden = hidden)
 
+    @commands.is_owner()
+    @cog_ext.cog_slash(
+        name='remind-task-check',
+        description='<注意>remindのTaskを確認する(Botのオーナーのみ実行可能です！)',
+        options=[
+            manage_commands.create_option(name='reply_is_hidden',
+                                        description='Botの実行結果を全員に見せるどうか',
+                                        option_type=3,
+                                        required=False,
+                                        choices=[
+                                            manage_commands.create_choice(
+                                            name='自分のみ',
+                                            value='True'),
+                                            manage_commands.create_choice(
+                                            name='全員に見せる',
+                                            value='False')
+                                        ])
+        ])
+    async def _remind_tasl_check(self, ctx, reply_is_hidden: str = 'True'):
+        LOG.info('remindのTaskを確認(owner)するぜ！')
+        msg = 'Taskは問題なく起動しています。'
+        if not self.printer.is_running():
+            msg = 'Taskが停止していたので再起動します。'
+            LOG.info(msg)
+            self.printer.start()
+        hidden = True if reply_is_hidden == 'True' else False
+        await ctx.send(msg, hidden = hidden)
+
     def calc_next_reminder_date(self, remind_datetime, repeat_interval):
         re_minutes = r'([0-9]*)mi$'
         next_remind_datetime = self.re_reminder_date(re_minutes, repeat_interval, remind_datetime, 'minutes')
