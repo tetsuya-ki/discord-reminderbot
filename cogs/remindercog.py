@@ -30,6 +30,12 @@ class ReminderCog(commands.Cog):
     @commands.Cog.listener()
     async def on_ready(self):
         dm_guild = self.bot.guilds[0].id if len(self.bot.guilds) > 0 else None
+
+        # PRIORITY_GUILDがある場合の上書き
+        if setting.PRIORITY_GUILD and setting.PRIORITY_GUILD.isdecimal():
+            pr_guild = [i for i in self.bot.guilds if i == int(setting.PRIORITY_GUILD)]
+            if len(pr_guild) > 0:
+                dm_guild = pr_guild[0]
         await self.remind.prepare(dm_guild)  # dbを作成
         LOG.info('SQlite準備完了')
         LOG.debug(self.bot.guilds)
