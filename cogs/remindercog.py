@@ -119,7 +119,7 @@ class ReminderCog(commands.Cog):
         description='remindを作成する',
         options=[
             manage_commands.create_option(name='date',
-                                        description='日付(mm/dd形式)、もしくは、何日後かの数字1桁(0-9)。年がある場合はyyyy/mm/dd形式(yyyy-mm-ddも形式も可)',
+                                        description='日付(mm/dd形式)、もしくは、何日後かの数字1桁(0-9)。年がある場合はyyyy/mm/dd形式(yyyy-mm-dd形式も可)',
                                         option_type=3,
                                         required=True),
             manage_commands.create_option(name='time',
@@ -127,7 +127,7 @@ class ReminderCog(commands.Cog):
                                         option_type=3,
                                         required=True),
             manage_commands.create_option(name='message',
-                                        description='メッセージ',
+                                        description='メッセージ(メンションしたい場合、通常のメッセージのように @xxxx を書いてください)',
                                         option_type=3,
                                         required=True),
             manage_commands.create_option(name='repeat_interval',
@@ -139,11 +139,11 @@ class ReminderCog(commands.Cog):
                                         option_type=3,
                                         required=False),
             manage_commands.create_option(name='channel',
-                                        description='チャンネル',
+                                        description='リマインドを投稿するチャンネル(#general等。「DM」でBotとのDMへ登録されます。未指定の場合はリマインド登録したチャンネルに投稿)',
                                         option_type=3,
                                         required=False),
             manage_commands.create_option(name='reply_is_hidden',
-                                        description='Botの実行結果を全員に見せるどうか(リマインド自体は普通です/他の人にもリマインド使わせたい場合、全員に見せる方がオススメです))',
+                                        description='Botの実行結果を全員に見せるどうか(リマインド自体は普通です/他の人にもリマインドを使わせたい場合、全員に見せる方がオススメです))',
                                         option_type=3,
                                         required=False,
                                         choices=[
@@ -271,7 +271,7 @@ class ReminderCog(commands.Cog):
                                         option_type=3,
                                         required=True),
             manage_commands.create_option(name='reply_is_hidden',
-                                        description='Botの実行結果を全員に見せるどうか(リマインド自体は普通です/他の人にもリマインド使わせたい場合、全員に見せる方がオススメです))',
+                                        description='Botの実行結果を全員に見せるどうか(リマインド自体は普通です/他の人にもリマインドを使わせたい場合、全員に見せる方がオススメです))',
                                         option_type=3,
                                         required=False,
                                         choices=[
@@ -321,7 +321,7 @@ class ReminderCog(commands.Cog):
         description='remindを確認する',
         options=[
             manage_commands.create_option(name='reply_is_hidden',
-                                        description='Botの実行結果を全員に見せるどうか(リマインド自体は普通です/他の人にもリマインド使わせたい場合、全員に見せる方がオススメです))',
+                                        description='Botの実行結果を全員に見せるどうか(リマインド自体は普通です/他の人にもリマインドを使わせたい場合、全員に見せる方がオススメです))',
                                         option_type=3,
                                         required=False,
                                         choices=[
@@ -344,10 +344,10 @@ class ReminderCog(commands.Cog):
     @cog_ext.cog_slash(
         name='remind-list-guild-all',
         # guild_ids=guilds,
-        description='<注意>サーバーのremindをぜんぶ確認する(administrator権限保持者のみ実行可能です！)',
+        description='<注意>ギルドのremindをぜんぶ確認する(administrator権限保持者のみ実行可能です！)',
         options=[
             manage_commands.create_option(name='reply_is_hidden',
-                                        description='Botの実行結果を全員に見せるどうか(リマインド自体は普通です/他の人にもリマインド使わせたい場合、全員に見せる方がオススメです))',
+                                        description='Botの実行結果を全員に見せるどうか(リマインド自体は普通です/他の人にもリマインドを使わせたい場合、全員に見せる方がオススメです))',
                                         option_type=3,
                                         required=False,
                                         choices=[
