@@ -87,7 +87,7 @@ class ReminderCog(commands.Cog):
                         await channel.send(f'次回のリマインドに失敗しました(No.{remind[0]}の{remind[10]}が計算できなかったため)')
                         continue
 
-                    status = 'Progress'
+                    status = self.remind.STATUS_PROGRESS
 
                     # 繰り返し回数のチェック
                     repeat_count = remind[7] + 1
@@ -236,7 +236,7 @@ class ReminderCog(commands.Cog):
             await ctx.send(error_message, hidden = True)
             return
 
-        status = 'Progress'
+        status = self.remind.STATUS_PROGRESS
 
         # 繰り返し間隔の設定
         repeat_flg = '0'

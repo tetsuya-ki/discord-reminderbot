@@ -13,6 +13,7 @@ class Remind:
     FILE_PATH = join(dirname(__file__), 'files' + os.sep + DATABASE)
     STATUS_FINISHED = 'Finished'
     STATUS_CANCELED = 'Canceled'
+    STATUS_PROGRESS = 'Progress'
     JST = timezone(timedelta(hours=+9), 'JST')
     REMIND_CONTROL_CHANNEL = 'remind_control_channel'
 
@@ -191,7 +192,7 @@ class Remind:
         conn = sqlite3.connect(self.FILE_PATH)
         with conn:
             cur = conn.cursor()
-            select_sql = '''select * from reminder_table where status = 'Progress' order by remind_datetime'''
+            select_sql = f'''select * from reminder_table where status = '{self.STATUS_PROGRESS}' order by remind_datetime'''
             LOG.debug(select_sql)
             cur.execute(select_sql)
             self.remind_rows = cur.fetchmany(100)
@@ -282,9 +283,9 @@ class Remind:
         with conn:
             cur = conn.cursor()
             if ctx.guild is None:
-                select_sql = f'''select * from reminder_table where status = 'Progress' and member = '{ctx.author.id}' order by remind_datetime'''
+                select_sql = f'''select * from reminder_table where status = '{self.STATUS_PROGRESS}' and member = '{ctx.author.id}' order by remind_datetime'''
             else:
-                select_sql = f'''select * from reminder_table where status = 'Progress' and guild = '{ctx.guild.id}' and member = '{ctx.author.id}' order by remind_datetime'''
+                select_sql = f'''select * from reminder_table where status = '{self.STATUS_PROGRESS}' and guild = '{ctx.guild.id}' and member = '{ctx.author.id}' order by remind_datetime'''
 
             LOG.debug(select_sql)
             cur.execute(select_sql)
@@ -339,7 +340,7 @@ class Remind:
         conn = sqlite3.connect(self.FILE_PATH)
         with conn:
             cur = conn.cursor()
-            select_sql = f'''select * from reminder_table where status = 'Progress' and member = '{ctx.author.id}' and id = '{id}' '''
+            select_sql = f'''select * from reminder_table where status = '{self.STATUS_PROGRESS}' and member = '{ctx.author.id}' and id = '{id}' '''
             LOG.debug(select_sql)
             cur.execute(select_sql)
             row = cur.fetchone()
