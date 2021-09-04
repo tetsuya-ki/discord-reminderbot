@@ -545,7 +545,10 @@ class ReminderCog(commands.Cog):
         except discord.ext.commands.NoPrivateMessage:
             await ctx.send(f'エラーが発生しました(ギルドでのみ実行できます(DMやグループチャットでは実行できません))', hidden = True)
         except discord.ext.commands.NotOwner:
-            await ctx.send(f'エラーが発生しました(Botのオーナーのみ実行できます))', hidden = True)
+            await ctx.send(f'エラーが発生しました(Botのオーナーのみ実行できます)', hidden = True)
+        except discord.ext.commands.MissingPermissions:
+            if ex.missing_perms[0] == 'administrator':
+                await ctx.send(f'エラーが発生しました(ギルドの管理者のみ実行できます)', hidden = True)
         except:
             await ctx.send(f'エラーが発生しました({ex})', hidden = True)
 
