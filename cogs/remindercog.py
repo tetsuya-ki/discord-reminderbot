@@ -320,6 +320,21 @@ class ReminderCog(commands.Cog):
         # guild_ids=guilds,
         description='remindを確認する',
         options=[
+            manage_commands.create_option(name='status',
+                                        description='リマインドリストで表示させるステータス',
+                                        option_type=3,
+                                        required=False,
+                                        choices=[
+                                            manage_commands.create_choice(
+                                            name='実行予定のリマインドリスト(デフォルト)',
+                                            value='Progress'),
+                                            manage_commands.create_choice(
+                                            name='キャンセルしたリマインドリスト',
+                                            value='Canceled'),
+                                            manage_commands.create_choice(
+                                            name='終了したリマインドリスト',
+                                            value='Finished')
+                                        ]),
             manage_commands.create_option(name='reply_is_hidden',
                                         description='Botの実行結果を全員に見せるどうか(リマインド自体は普通です/他の人にもリマインドを使わせたい場合、全員に見せる方がオススメです))',
                                         option_type=3,
@@ -333,9 +348,9 @@ class ReminderCog(commands.Cog):
                                             value='False')
                                         ])
         ])
-    async def remind_list(self, ctx, reply_is_hidden: str = 'True'):
+    async def remind_list(self, ctx, status: str = 'Progress', reply_is_hidden: str = 'True'):
         LOG.info('remindをlistするぜ！')
-        rows = self.remind.list(ctx)
+        rows = self.remind.list(ctx, status)
         hidden = True if reply_is_hidden == 'True' else False
         await ctx.send(rows, hidden = hidden)
 
@@ -346,6 +361,21 @@ class ReminderCog(commands.Cog):
         # guild_ids=guilds,
         description='<注意>ギルドのremindをぜんぶ確認する(administrator権限保持者のみ実行可能です！)',
         options=[
+            manage_commands.create_option(name='status',
+                                        description='リマインドリストで表示させるステータス',
+                                        option_type=3,
+                                        required=False,
+                                        choices=[
+                                            manage_commands.create_choice(
+                                            name='実行予定のリマインドリスト',
+                                            value='Progress'),
+                                            manage_commands.create_choice(
+                                            name='キャンセルしたリマインドリスト',
+                                            value='Canceled'),
+                                            manage_commands.create_choice(
+                                            name='終了したリマインドリスト',
+                                            value='Finished')
+                                        ]),
             manage_commands.create_option(name='reply_is_hidden',
                                         description='Botの実行結果を全員に見せるどうか(リマインド自体は普通です/他の人にもリマインドを使わせたい場合、全員に見せる方がオススメです))',
                                         option_type=3,
@@ -359,9 +389,9 @@ class ReminderCog(commands.Cog):
                                             value='False')
                                         ])
         ])
-    async def _remind_list_guild_all(self, ctx, reply_is_hidden: str = 'True'):
+    async def _remind_list_guild_all(self, ctx, reply_is_hidden: str = 'True', status: str = None):
         LOG.info('remindをlist(guild)するぜ！')
-        rows = self.remind.list_all_guild(ctx)
+        rows = self.remind.list_all_guild(ctx, status)
         hidden = True if reply_is_hidden == 'True' else False
         await ctx.send(rows, hidden = hidden)
 
@@ -371,6 +401,21 @@ class ReminderCog(commands.Cog):
         name='remind-list-all',
         description='<注意>remindをぜんぶ確認する(BotのオーナーのみDMで実行可能です！)',
         options=[
+            manage_commands.create_option(name='status',
+                                        description='リマインドリストで表示させるステータス',
+                                        option_type=3,
+                                        required=False,
+                                        choices=[
+                                            manage_commands.create_choice(
+                                            name='実行予定のリマインドリスト',
+                                            value='Progress'),
+                                            manage_commands.create_choice(
+                                            name='キャンセルしたリマインドリスト',
+                                            value='Canceled'),
+                                            manage_commands.create_choice(
+                                            name='終了したリマインドリスト',
+                                            value='Finished')
+                                        ]),
             manage_commands.create_option(name='reply_is_hidden',
                                         description='Botの実行結果を全員に見せるどうか(リマインド自体は普通です/他の人にもリマインド使わせたい場合、全員に見せる方がオススメです))',
                                         option_type=3,
@@ -384,9 +429,9 @@ class ReminderCog(commands.Cog):
                                             value='False')
                                         ])
         ])
-    async def _remind_list_all(self, ctx, reply_is_hidden: str = 'True'):
+    async def _remind_list_all(self, ctx, reply_is_hidden: str = 'True', status: str = None):
         LOG.info('remindをlist(owner)するぜ！')
-        rows = self.remind.list_all(ctx)
+        rows = self.remind.list_all(ctx, status)
         hidden = True if reply_is_hidden == 'True' else False
         await ctx.send(rows, hidden = hidden)
 

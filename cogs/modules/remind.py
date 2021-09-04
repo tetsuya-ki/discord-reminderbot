@@ -277,15 +277,20 @@ class Remind:
             guild = discord.utils.get(self.bot.guilds, id=self.saved_dm_guild)
             await self.set_discord_attachment_file(guild)
 
-    def list(self, ctx: commands.Context):
+    def list(self, ctx: commands.Context, status: str = 'Progress'):
         self.decode()
         conn = sqlite3.connect(self.FILE_PATH)
         with conn:
             cur = conn.cursor()
             if ctx.guild is None:
-                select_sql = f'''select * from reminder_table where status = '{self.STATUS_PROGRESS}' and member = '{ctx.author.id}' order by remind_datetime'''
+                select_sql = f'''select * from reminder_table where status = '{status}' and member = '{ctx.author.id}' '''
             else:
-                select_sql = f'''select * from reminder_table where status = '{self.STATUS_PROGRESS}' and guild = '{ctx.guild.id}' and member = '{ctx.author.id}' order by remind_datetime'''
+                select_sql = f'''select * from reminder_table where status = '{status}' and guild = '{ctx.guild.id}' and member = '{ctx.author.id}' '''
+
+            if status == self.STATUS_PROGRESS:
+                select_sql += '''order by remind_datetime'''
+            else:
+                select_sql += '''order by updated_at desc'''
 
             LOG.debug(select_sql)
             cur.execute(select_sql)
@@ -294,15 +299,16 @@ class Remind:
             escaped_mention_text = '(データがありません)' if len(message) == 0 else discord.utils.escape_mentions(message)
             LOG.debug(escaped_mention_text)
         self.encode()
-        return escaped_mention_text
+        chopped_escaped_mention_text = escaped_mention_text[:1900] + ('...(省略)...' if escaped_mention_text[1900:] else '')
+        return chopped_escaped_mention_text
 
-    def list_all_guild(self, ctx: commands.Context):
-        return self._list_all_func(ctx, True)
+    def list_all_guild(self, ctx: commands.Context, status: str = None):
+        return self._list_all_func(ctx, True, status)
 
-    def list_all(self, ctx: commands.Context):
-        return self._list_all_func(ctx, False)
+    def list_all(self, ctx: commands.Context, status: str = None):
+        return self._list_all_func(ctx, False, status)
 
-    def _list_all_func(self, ctx: commands.Context, is_guild: bool):
+    def _list_all_func(self, ctx: commands.Context, is_guild: bool, status: str = None):
         self.decode()
         conn = sqlite3.connect(self.FILE_PATH)
         with conn:
@@ -311,7 +317,17 @@ class Remind:
             select_sql = 'select * from reminder_table '
             if is_guild:
                 select_sql += f'''where guild = '{ctx.guild.id}' '''
-            select_sql += 'order by updated_at desc'
+            if status:
+                if is_guild:
+                    select_sql += f'''and status = '{status}' '''
+                else:
+                    select_sql += f'''where status = '{status}' '''
+
+            if status is not None and status == self.STATUS_PROGRESS:
+                select_sql += '''order by remind_datetime'''
+            else:
+                select_sql += '''order by updated_at desc'''
+
             LOG.debug(select_sql)
 
             cur.execute(select_sql)
