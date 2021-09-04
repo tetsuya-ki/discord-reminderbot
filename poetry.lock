@@ -56,12 +56,21 @@ optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
 
 [[package]]
-name = "discord-py-slash-command"
-version = "1.2.0"
-description = "A simple discord slash command handler for discord.py."
+name = "discord-py-interactions"
+version = "3.0.2"
+description = "A simple API wrapper for Discord interactions."
 category = "main"
 optional = false
 python-versions = ">=3.6"
+
+[package.dependencies]
+"discord.py" = "*"
+aiohttp = "*"
+
+[package.extras]
+lint = ["black", "flake8", "isort", "sphinx", "sphinx-rtd-theme"]
+dev = ["black", "flake8", "isort", "sphinx", "sphinx-rtd-theme"]
+readthedocs = ["sphinx", "sphinx-rtd-theme"]
 
 [[package]]
 name = "discord.py"
@@ -224,7 +233,7 @@ idna = ">=2.0"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "29923ba690aae8b92555b56a7f2e8e0f8aacf404f1eb8620431db0e53bb090af"
+content-hash = "c06d87f2b521db0dd9a0b99143c715df5a0abef4c04b94c286b2d0906b867b80"
 
 [metadata.files]
 aiohttp = [
@@ -282,9 +291,9 @@ click = [
     {file = "click-7.1.2-py2.py3-none-any.whl", hash = "sha256:dacca89f4bfadd5de3d7489b7c8a566eee0d3676333fbb50030263894c38c0dc"},
     {file = "click-7.1.2.tar.gz", hash = "sha256:d2b5255c7c6349bc1bd1e59e08cd12acbbd63ce649f2588755783aa94dfb6b1a"},
 ]
-discord-py-slash-command = [
-    {file = "discord-py-slash-command-1.1.0.tar.gz", hash = "sha256:b40a3c10ff4a83cb17b1443bd90761870d24cb71e7501f11c786ed179bef8d18"},
-    {file = "discord_py_slash_command-1.1.0-py3-none-any.whl", hash = "sha256:3dae6ff3e72da132b8307214daf575b68972407ca91572cca88276f25264554c"},
+discord-py-interactions = [
+    {file = "discord-py-interactions-3.0.2.tar.gz", hash = "sha256:14f11c2333a2287991abfe5169cd7be5d25fdaadec546f0da6cbd3de00fc75bd"},
+    {file = "discord_py_interactions-3.0.2-py3-none-any.whl", hash = "sha256:b50eb92d2b86bda71b02077d95a3089205f6b981baea28304ee80916e0a22029"},
 ]
 "discord.py" = [
     {file = "discord.py-1.6.0-py3-none-any.whl", hash = "sha256:3df148daf6fbcc7ab5b11042368a3cd5f7b730b62f09fb5d3cbceff59bcfbb12"},
