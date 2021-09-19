@@ -255,6 +255,25 @@ class ReminderCog(commands.Cog):
         elif re.match(self.NUM_1keta, date):
             date = today + relativedelta(days=+int(date))
 
+        # 時間の変換
+        now_time = datetime.datetime.now(self.JST)
+        m_hours = re.match('^([0-9]{1,3})h$', time)
+        m_minutes = re.match('^([0-9]{1,4})mi$', time)
+        m_normal = re.match('^([0-9]{1,2}:[0-9]{1,2})$', time)
+        if m_hours:
+            result_time = now_time + datetime.timedelta(hours=int(m_hours.group(1)))
+            time = result_time.strftime('%H:%M')
+        elif m_minutes:
+            result_time = now_time + datetime.timedelta(minutes=int(m_minutes.group(1)))
+            time = result_time.strftime('%H:%M')
+        elif m_normal:
+            pass
+        else:
+            error_message = '不正な時間のため、リマインドを登録できませんでした'
+            LOG.info(error_message)
+            await ctx.send(error_message, hidden = True)
+            return
+
         # リマインド日時への変換
         remind_datetime = None
         try:
