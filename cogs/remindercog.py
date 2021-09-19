@@ -70,7 +70,23 @@ class ReminderCog(commands.Cog):
                                                 guild__id=remind[2],
                                                 id=remind[4])
                     if channel is not None:
-                        await channel.send(remind[5])
+                        try:
+                            await channel.send(remind[5])
+                        except discord.errors.Forbidden:
+                            msg = f'＊＊＊{remind[2]}のチャンネルへの投稿に失敗しました！＊＊＊'
+                            LOG.error(msg)
+                            # リマインドを削除
+                            await self.remind.update_status(remind[0], remind[2], self.remind.STATUS_ERROR)
+                            
+                            try:
+                                get_control_channel = discord.utils.get(self.bot.get_all_channels(),guild__id=remind[2],name=self.remind.REMIND_CONTROL_CHANNEL)
+                                await get_control_channel.send(f'@here No.{remind[0]}は権限不足などの原因でリマインドできませんでした。リマインドしたい場合は、投稿先チャンネルの設定見直しをお願いします\n> {remind[5]}')
+                            except:
+                                msg = f'＊＊＊さらに、{remind[2]}のチャンネル({self.remind.REMIND_CONTROL_CHANNEL})への投稿に失敗しました！＊＊＊'
+                                LOG.error(msg)
+                                continue
+
+                            continue
 
                 # リマインドを削除
                 await self.remind.update_status(remind[0], remind[2], self.remind.STATUS_FINISHED)
