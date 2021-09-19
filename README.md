@@ -4,6 +4,9 @@
 - Discordでリマインダーを使うBotです(リマインドの定期実行も可能)
 - スラッシュコマンド（[eunwoo1104 / discord-py-slash-command](https://github.com/eunwoo1104/discord-py-slash-command)）が使えるため、コマンドを覚える必要がなく、それぞれのオプションの意味が表示されます
   - [有名なリマインダーBotが定期実行に寄付が必要](https://qiita.com/kbt0401/items/1d26f2c99580647e12dc)という記事を見て作ってみました
+- 以下の招待リンクからお試しできます
+  - 招待リンク: <https://discord.com/api/oauth2/authorize?client_id=865141043891798060&permissions=2147723280&scope=bot%20applications.commands>
+  - 止まってたりしたらこっそり教えてください(その前に、`/remind-task-check`で直るかもしれません)
 
 ## 機能
 
@@ -37,6 +40,8 @@
     - mm-dd形式もOK(yyyy-mm-dd形式もOK)
   - time(リマインド時間)
     - hh:mi形式(例→`23:12`)
+    - xxh(xx時間後という意味。例→`10h`)
+    - xxmi(xx分後という意味。例→`10mi`)
   - message(メッセージ)
     - リマインドするメッセージ
     - メンションしたい場合、通常のメッセージと同様に、@xxxx形式で入力してください（リマインド時にメンションされます）

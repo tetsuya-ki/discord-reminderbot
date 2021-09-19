@@ -148,7 +148,7 @@ class ReminderCog(commands.Cog):
                                         option_type=3,
                                         required=True),
             manage_commands.create_option(name='time',
-                                        description='時間(hh24:mi形式)',
+                                        description='時間(hh24:mi形式)、もしくは、xxh(xxは数字(0-9)。xx時間後)、xxmi(xx分後)',
                                         option_type=3,
                                         required=True),
             manage_commands.create_option(name='message',
