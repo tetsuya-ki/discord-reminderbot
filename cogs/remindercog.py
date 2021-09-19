@@ -107,13 +107,15 @@ class ReminderCog(commands.Cog):
 
                     # 繰り返し回数のチェック
                     repeat_count = remind[7] + 1
-                    if remind[8] is None or repeat_count < remind[8]:
+                    if remind[8] is None or (remind[8].isdecimal() and repeat_count < remind[8]):
                         repeat_flg = '1'
-                    elif repeat_count > remind[8]:
+                    elif remind[8].isdecimal() and repeat_count > remind[8]:
                         LOG.warning(f'No.{remind[0]}のrepeat_max_count({remind[8]})を超えているため、追加をしません。')
                         continue
                     else:
                         repeat_flg = '0'
+                        if not remind[8].isdecimal():
+                            LOG.warning(f'繰り返し上限に数字以外が登録されました。remind[8]は{str(remind[8])}')
 
                     # 繰り返し時のメッセージを変更
                     last_remind_message = re.sub('\(\d+\)','', remind[5])
@@ -183,6 +185,11 @@ class ReminderCog(commands.Cog):
         LOG.info('remindをmakeするぜ！')
 
         # チェック処理(存在しない場合、引数が不正な場合など)
+        if repeat_max_count is not None and not repeat_max_count.isdecimal():
+            msg = '繰り返し最大数が数字ではありません。繰り返したい回数か、未設定としてください（未設定の場合はキャンセルするまでずっとリマインドします）。'
+            await ctx.send(msg, hidden = True)
+            LOG.info(msg)
+            return
 
         # ギルドの設定
         if ctx.guild is not None:
