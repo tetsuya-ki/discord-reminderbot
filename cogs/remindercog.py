@@ -93,6 +93,13 @@ class ReminderCog(commands.Cog):
 
                 # リマインドを繰り返す場合の処理
                 if remind[9] == '1':
+                    try:
+                        if remind[2]:
+                            await self.bot.fetch_guild(remind[2])
+                    except:
+                        LOG.warning(f'No.{remind[0]}(guild:{remind[2]}が取得できなかったため、繰り返し対象外とします。')
+                        continue
+
                     # remind[10](repeat_interval)に従って、次のリマインドを作成
                     # remind_datetimeは次の日付に変換（ちょっと難しいところ）
                     next_remind_datetime = self.check_next_reminder_date(remind_datetime, remind[10], now,remind[0])
