@@ -190,6 +190,7 @@ class ReminderCog(commands.Cog):
                         channel: str = None,
                         reply_is_hidden: str = 'True'):
         LOG.info('remindをmakeするぜ！')
+        self.check_printer_is_running()
 
         # チェック処理(存在しない場合、引数が不正な場合など)
         if repeat_max_count is not None and not repeat_max_count.isdecimal():
@@ -290,7 +291,6 @@ class ReminderCog(commands.Cog):
         hidden = True if reply_is_hidden == 'True' else False
         await ctx.send(f'リマインドを登録しました(No.{id})', hidden = hidden)
 
-
     @cog_ext.cog_slash(
         name='remind-cancel',
         # guild_ids=guilds,
@@ -318,6 +318,8 @@ class ReminderCog(commands.Cog):
                             cancel_no: str,
                             reply_is_hidden: str = 'True'):
         LOG.info('remindをcancelするぜ！')
+        self.check_printer_is_running()
+
         # チェック
         if not cancel_no.isdecimal():
             invalid_number_msg = '有効な数字ではありません'
@@ -380,6 +382,8 @@ class ReminderCog(commands.Cog):
         ])
     async def remind_list(self, ctx, status: str = 'Progress', reply_is_hidden: str = 'True'):
         LOG.info('remindをlistするぜ！')
+        self.check_printer_is_running()
+
         rows = self.remind.list(ctx, status)
         hidden = True if reply_is_hidden == 'True' else False
         await ctx.send(rows, hidden = hidden)
@@ -421,6 +425,8 @@ class ReminderCog(commands.Cog):
         ])
     async def _remind_list_guild_all(self, ctx, reply_is_hidden: str = 'True', status: str = None):
         LOG.info('remindをlist(guild)するぜ！')
+        self.check_printer_is_running()
+
         rows = self.remind.list_all_guild(ctx, status)
         hidden = True if reply_is_hidden == 'True' else False
         await ctx.send(rows, hidden = hidden)
@@ -461,14 +467,15 @@ class ReminderCog(commands.Cog):
         ])
     async def _remind_list_all(self, ctx, reply_is_hidden: str = 'True', status: str = None):
         LOG.info('remindをlist(owner)するぜ！')
+        self.check_printer_is_running()
+
         rows = self.remind.list_all(ctx, status)
         hidden = True if reply_is_hidden == 'True' else False
         await ctx.send(rows, hidden = hidden)
 
-    @commands.is_owner()
     @cog_ext.cog_slash(
         name='remind-task-check',
-        description='<注意>remindのTaskを確認する(Botのオーナーのみ実行可能です！)',
+        description='remindのTaskを確認する(リマインドが発動しない場合に実行してください)',
         options=[
             manage_commands.create_option(name='reply_is_hidden',
                                         description='Botの実行結果を全員に見せるどうか',
@@ -483,13 +490,12 @@ class ReminderCog(commands.Cog):
                                             value='False')
                                         ])
         ])
-    async def _remind_tasl_check(self, ctx, reply_is_hidden: str = 'True'):
-        LOG.info('remindのTaskを確認(owner)するぜ！')
+    async def _remind_task_check(self, ctx, reply_is_hidden: str = 'True'):
+        LOG.info('remindのTaskを確認するぜ！')
+        self.check_printer_is_running()
+
         msg = 'Taskは問題なく起動しています。'
-        if not self.printer.is_running():
-            msg = 'Taskが停止していたので再起動します。'
-            LOG.info(msg)
-            self.printer.start()
+        self.check_printer_is_running()
         hidden = True if reply_is_hidden == 'True' else False
         await ctx.send(msg, hidden = hidden)
 
@@ -607,6 +613,12 @@ class ReminderCog(commands.Cog):
                 next_remind_datetime = None
                 break
         return next_remind_datetime
+
+    def check_printer_is_running(self):
+        if not self.printer.is_running():
+            msg = 'Taskが停止していたので再起動します。'
+            LOG.info(msg)
+            self.printer.start()
 
     @commands.Cog.listener()
     async def on_slash_command_error(self, ctx, ex):
