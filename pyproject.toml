@@ -7,7 +7,6 @@ authors = ["tetsuya-k <64536338+tetsuya-ki@users.noreply.github.com>"]
 [tool.poetry.dependencies]
 python = "^3.8"
 aiohttp = "^3.7.4"
-discord-py-slash-command = "^1.0.9"
 async-timeout = "3.0.1"
 attrs = "^20.3.0"
 chardet = "3.0.4"
@@ -21,6 +20,7 @@ multidict = "4.7.6"
 yarl = "1.5.1"
 toml = "^0.10.2"
 pycryptodome = "^3.10.1"
+discord-py-interactions = "^3.0.2"
 
 [tool.poetry.dev-dependencies]
 
