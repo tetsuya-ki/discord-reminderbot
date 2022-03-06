@@ -365,3 +365,28 @@ class Remind:
             LOG.debug(escaped_mention_text)
         self.encode()
         return row
+
+    async def delete_old_reminder(self, ctx: commands.Context):
+        self.decode()
+        conn = sqlite3.connect(self.FILE_PATH)
+        with conn:
+            cur = conn.cursor()
+            delete_sql = f'''delete from reminder_table where status = '{self.STATUS_FINISHED}' '''
+            LOG.debug(delete_sql)
+            cur.execute(delete_sql)
+            LOG.debug('delete finished reminder')
+            conn.commit()
+            cur.execute('vacuum')
+        self.read()
+        self.encode()
+        guild = ctx.guild
+        if guild is None:
+            guild = self.saved_dm_guild
+        # Herokuの時のみ、チャンネルにファイルを添付する
+        try:
+            await self.set_discord_attachment_file(guild)
+        except discord.errors.Forbidden:
+            msg = f'＊＊＊{guild.name}へのチャンネル作成に失敗したため、dm_guildへ添付します＊＊＊'
+            LOG.info(msg)
+            guild = discord.utils.get(self.bot.guilds, id=self.saved_dm_guild)
+            await self.set_discord_attachment_file(guild)

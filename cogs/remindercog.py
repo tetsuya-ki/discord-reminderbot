@@ -518,6 +518,33 @@ class ReminderCog(commands.Cog):
         hidden = True if reply_is_hidden == 'True' else False
         await ctx.send(msg, hidden = hidden)
 
+    @commands.is_owner()
+    @cog_ext.cog_slash(
+        name='delete-old-data',
+        description='<注意>完了したremindをぜんぶ削除する(BotのオーナーのみDMで実行可能です！)',
+        # guild_ids=guilds,
+        options=[
+            manage_commands.create_option(name='reply_is_hidden',
+                                        description='Botの実行結果を全員に見せるどうか(リマインド自体は普通です/他の人にもリマインド使わせたい場合、全員に見せる方がオススメです))',
+                                        option_type=3,
+                                        required=False,
+                                        choices=[
+                                            manage_commands.create_choice(
+                                            name='自分のみ',
+                                            value='True'),
+                                            manage_commands.create_choice(
+                                            name='全員に見せる',
+                                            value='False')
+                                        ])
+        ])
+    async def _delete_old_data(self, ctx, reply_is_hidden: str = 'True'):
+        LOG.info('remindをdelete(owner)するぜ！')
+        self.check_printer_is_running()
+
+        await self.remind.delete_old_reminder(ctx)
+        hidden = True if reply_is_hidden == 'True' else False
+        await ctx.send('ステータスが完了のリマインドを全て削除しました', hidden = hidden)
+
     def calc_next_reminder_date(self, remind_datetime, repeat_interval):
         re_minutes = r'([0-9]*)mi$'
         next_remind_datetime = self.re_reminder_date(re_minutes, repeat_interval, remind_datetime, 'minutes')
