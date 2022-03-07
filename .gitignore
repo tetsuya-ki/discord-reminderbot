@@ -109,3 +109,6 @@ Log/
 # sqlite3 db
 *.db
 *.bin
+
+# docker
+docker-compose.override.yml
