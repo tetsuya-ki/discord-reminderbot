@@ -125,9 +125,12 @@ class ReminderCog(commands.Cog):
                         if not remind_repeat_max_str.isdecimal():
                             LOG.warning(f'繰り返し上限に数字以外が登録されました。remind[8]は{remind_repeat_max_str}')
 
-                    # 繰り返し時のメッセージを変更
+                    # 繰り返し時のメッセージを変更(最後の行がURLの場合は繰り返し番号をつけない)
                     last_remind_message = re.sub('\(\d+\)','', remind[5])
-                    remind_message = f'{last_remind_message}({repeat_count})' if repeat_count > 1 else remind[5]
+                    last_line_url = re.search(r'https?://[a-zA-Z0-9/:%#\$&?()~.=+_-]+\Z', remind[5])
+                    remind_message =  remind[5]
+                    if repeat_count > 1 and last_line_url is None:
+                        remind_message = f'{last_remind_message}({repeat_count})'
 
                     id = await self.remind.make(remind[2], remind[3], next_remind_datetime, remind_message, remind[4], status, repeat_flg,
                         remind[10], repeat_count, remind[8])
