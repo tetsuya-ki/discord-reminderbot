@@ -5,7 +5,7 @@
 - スラッシュコマンド（[eunwoo1104 / discord-py-slash-command](https://github.com/eunwoo1104/discord-py-slash-command)）が使えるため、コマンドを覚える必要がなく、それぞれのオプションの意味が表示されます
   - [有名なリマインダーBotが定期実行に寄付が必要](https://qiita.com/kbt0401/items/1d26f2c99580647e12dc)という記事を見て作ってみました
 - 以下の招待リンクからお試しできます
-  - 招待リンク: <https://discord.com/api/oauth2/authorize?client_id=865141043891798060&permissions=2147723280&scope=bot%20applications.commands>
+  - 招待リンク: <https://discord.com/api/oauth2/authorize?client_id=873515660674756639&permissions=2147723280&scope=bot%20applications.commands>
   - 止まってたりしたらこっそり教えてください(その前に、`/remind-task-check`で直るかもしれません)
 
 ## 機能
@@ -105,7 +105,7 @@
 
 ### `/remind-list-all`
 
-- BotとのDMのみ、かつ、Botのオーナーのみ使用可能
+- BotとのDMのみ、かつ、Botのオーナー(DiscordのBotのトークンを生成した人)のみ使用可能
 - Botに登録されているリマインドをすべて表示します
 - オプション
   - status
@@ -133,7 +133,7 @@
 
 ### `delete-old-data`
 
-- Botのオーナーのみ使用可能
+- Botのオーナー(DiscordのBotのトークンを生成した人)のみ使用可能
 - ステータスが「完了」のリマインドをすべて削除(添付ファイルの容量が厳しいため)
 
 ### その他のコマンドは検討中です(リマインドの削除など実装予定)
@@ -193,15 +193,57 @@
 - wikiに書くつもりです(時期未定)
 - わからないことがあれば[Discussions](https://github.com/tetsuya-ki/discord-reminderbot/discussions)に書いてみてください
 
-### 前提
+### 普通に動かす場合
+
+#### 前提
 
 - poetryがインストールされていること
-- `.env`が作成されていること
+- `.env.sample`をコピーし、`.env`が作成されていること(それぞれの環境変数の意味は[環境変数](#環境変数)を参照ください)
 
-### 動かす
+#### 動かす
 
 - 以下のコマンドを実行
 
 ```sh
 poetry run python discord-reminderbot.py
 ```
+
+### docker-composeを用いた起動手順
+
+#### 前提(docker-compose)
+
+- `docker`,`docker-compose`コマンドが利用できること
+
+#### 環境変数の設定
+
+- `.env`の準備の代わりに、`docker-compose.override.yml`を作成して環境変数を記載
+
+```docker
+version: "3"
+
+services:
+  app:
+    environment:
+      - DISCORD_TOKEN=__あなたのDicordトークン__
+      - LOG_LEVEL=INFO
+      - ENABLE_SLASH_COMMAND_GUILD_ID_LIST= __あなたのGuild_IDを入力(数字/複数あるなら;を挟むこと。グローバルコマンドの場合は入力しないこと！(その場合1時間程度登録に時間がかかる可能性があります))__
+      - KEEP_DECRYPTED_FILE=FALSE
+      - IS_HEROKU=FALSE
+      - IS_REPLIT=FALSE
+      - RESTRICT_ATTACHMENT_FILE=FALSE
+      - PRIORITY_GUILD=__あなたのGuild_IDを入力(数字)__
+```
+
+#### 起動・停止操作
+
+- Dockerイメージのビルド
+`docker-compose build`
+
+- 起動
+`docker-compose up -d`
+
+- 停止
+`docker-compose down`
+
+- ログ出力
+`docker-compose logs -f`

@@ -64,14 +64,14 @@ class ReminderCog(commands.Cog):
                         remind_user = await self.bot.fetch_user(remind[3])
                         text = remind_user or ''
                     channel = await remind_user.create_dm()
-                    await channel.send(remind[5])
+                    remind_msg = await channel.send(remind[5])
                 else:
                     channel = discord.utils.get(self.bot.get_all_channels(),
                                                 guild__id=remind[2],
                                                 id=remind[4])
                     if channel is not None:
                         try:
-                            await channel.send(remind[5])
+                            remind_msg = await channel.send(remind[5])
                         except discord.errors.Forbidden:
                             msg = f'＊＊＊{remind[2]}のチャンネルへの投稿に失敗しました！＊＊＊'
                             LOG.error(msg)
@@ -80,7 +80,7 @@ class ReminderCog(commands.Cog):
                             
                             try:
                                 get_control_channel = discord.utils.get(self.bot.get_all_channels(),guild__id=remind[2],name=self.remind.REMIND_CONTROL_CHANNEL)
-                                await get_control_channel.send(f'@here No.{remind[0]}は権限不足などの原因でリマインドできませんでした。リマインドしたい場合は、投稿先チャンネルの設定見直しをお願いします\n> {remind[5]}')
+                                remind_msg = await get_control_channel.send(f'@here No.{remind[0]}は権限不足などの原因でリマインドできませんでした。リマインドしたい場合は、投稿先チャンネルの設定見直しをお願いします\n> {remind[5]}')
                             except:
                                 msg = f'＊＊＊さらに、{remind[2]}のチャンネル({self.remind.REMIND_CONTROL_CHANNEL})への投稿に失敗しました！＊＊＊'
                                 LOG.error(msg)
@@ -107,7 +107,7 @@ class ReminderCog(commands.Cog):
                     # 計算できなかったら、飛ばす
                     if next_remind_datetime is None:
                         LOG.warning(f'No.{remind[0]}の{remind[10]}が計算できなかったため、飛ばしました。')
-                        await channel.send(f'次回のリマインドに失敗しました(No.{remind[0]}の{remind[10]}が計算できなかったため)')
+                        await remind_msg.reply(f'次回のリマインドに失敗しました(No.{remind[0]}の{remind[10]}が計算できなかったため)')
                         continue
 
                     status = self.remind.STATUS_PROGRESS
@@ -131,7 +131,7 @@ class ReminderCog(commands.Cog):
                     id = await self.remind.make(remind[2], remind[3], next_remind_datetime, remind_message, remind[4], status, repeat_flg,
                         remind[10], repeat_count, remind[8])
                     if channel:
-                        await channel.send(f'次回のリマインドを登録しました(No.{id})')
+                        await remind_msg.reply(f'次回のリマインドを登録しました(No.{id})')
                     else:
                         LOG.error(f'channelがないので、メッセージ送れませんでした！(No.{id})')
 
