@@ -114,15 +114,16 @@ class ReminderCog(commands.Cog):
 
                     # 繰り返し回数のチェック
                     repeat_count = remind[7] + 1
-                    if remind[8] is None or (remind[8].isdecimal() and repeat_count < remind[8]):
+                    remind_repeat_max_str = str(remind[8])
+                    if remind[8] is None or (remind_repeat_max_str.isdecimal() and repeat_count < remind[8]):
                         repeat_flg = '1'
-                    elif remind[8].isdecimal() and repeat_count > remind[8]:
-                        LOG.warning(f'No.{remind[0]}のrepeat_max_count({remind[8]})を超えているため、追加をしません。')
+                    elif remind_repeat_max_str.isdecimal() and repeat_count > remind[8]:
+                        LOG.warning(f'No.{remind[0]}のrepeat_max_count({remind_repeat_max_str})を超えているため、追加をしません。')
                         continue
                     else:
                         repeat_flg = '0'
-                        if not remind[8].isdecimal():
-                            LOG.warning(f'繰り返し上限に数字以外が登録されました。remind[8]は{str(remind[8])}')
+                        if not remind_repeat_max_str.isdecimal():
+                            LOG.warning(f'繰り返し上限に数字以外が登録されました。remind[8]は{remind_repeat_max_str}')
 
                     # 繰り返し時のメッセージを変更
                     last_remind_message = re.sub('\(\d+\)','', remind[5])
