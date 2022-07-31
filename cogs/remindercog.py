@@ -17,7 +17,7 @@ LOG = getLogger('reminderbot')
 # コグとして用いるクラスを定義。
 class ReminderCog(commands.Cog):
     guilds = [] if setting.ENABLE_SLASH_COMMAND_GUILD_ID_LIST is None else list(
-        map(int, setting.ENABLE_SLASH_COMMAND_GUILD_ID_LIST.split(';')))
+        map(lambda x: x if x.isdigit() else '', setting.ENABLE_SLASH_COMMAND_GUILD_ID_LIST.split(';')))
     JST = timezone(timedelta(hours=9), 'JST')
     NUM_1keta = '^[0-9]$'
 
