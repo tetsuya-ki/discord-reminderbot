@@ -230,9 +230,7 @@ class Remind:
             LOG.debug(insert_sql)
 
             # get id
-            get_id_sql = 'select id from reminder_table where rowid = last_insert_rowid()'
-            cur.execute(get_id_sql)
-            id = cur.fetchone()[0]
+            id = self.get_last_id(conn, False)
             LOG.debug(f'id:{id}を追加しました')
             conn.commit()
             self.read()
@@ -398,3 +396,17 @@ class Remind:
             LOG.info(msg)
             guild = discord.utils.get(self.bot.guilds, id=self.saved_dm_guild)
             await self.set_discord_attachment_file(guild)
+
+    def get_last_id(self, conn = None, decode_flg = True):
+        if conn is None:
+            conn = sqlite3.connect(self.FILE_PATH)
+        if decode_flg:
+            self.decode()
+        with conn:
+            cur = conn.cursor()
+            get_id_sql = 'select id from reminder_table order by id desc limit 1'
+            cur.execute(get_id_sql)
+            last_id = cur.fetchone()[0]
+        if decode_flg:
+            self.encode()
+        return last_id

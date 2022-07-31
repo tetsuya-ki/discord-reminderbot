@@ -339,8 +339,13 @@ class ReminderCog(commands.Cog):
         repeat_count = 1
 
         # 実際の処理(remind.pyでやる)
-        id = await self.remind.make(guild_id, ctx.author.id, remind_datetime, message, channel_id, status, repeat_flg,
-                        repeat_interval, repeat_count, repeat_max_count)
+        try:
+            id = await self.remind.make(guild_id, ctx.author.id, remind_datetime, message, channel_id, status, repeat_flg,
+                            repeat_interval, repeat_count, repeat_max_count)
+        except:
+            # 失敗した場合自分で最後のidを取得
+            id = self.remind.get_last_id()
+            LOG.warning('コマンドremind_make中に失敗(おそらく添付用チャンネルの作成、または、添付に失敗)')
 
         hidden = True if reply_is_hidden == 'True' else False
         await ctx.send(f'リマインドを登録しました(No.{id})', hidden = hidden)
