@@ -151,7 +151,11 @@ class Remind:
                 try:
                     get_control_channel = await guild.create_text_channel(name=self.REMIND_CONTROL_CHANNEL, overwrites=overwrites)
                     LOG.info(f'＊＊＊{self.REMIND_CONTROL_CHANNEL}を作成しました！＊＊＊')
-                except discord.errors.Forbidden:
+                except (discord.errors.Forbidden,) as e:
+                    msg = f'＊＊＊{self.REMIND_CONTROL_CHANNEL}の作成に失敗しました！＊＊＊\n{e}'
+                    LOG.error(msg)
+                    raise
+                except:
                     msg = f'＊＊＊{self.REMIND_CONTROL_CHANNEL}の作成に失敗しました！＊＊＊'
                     LOG.error(msg)
                     raise

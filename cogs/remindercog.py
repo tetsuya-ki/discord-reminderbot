@@ -64,7 +64,27 @@ class ReminderCog(commands.Cog):
                         remind_user = await self.bot.fetch_user(remind[3])
                         text = remind_user or ''
                     channel = await remind_user.create_dm()
-                    remind_msg = await channel.send(remind[5])
+                    try:
+                        remind_msg = await channel.send(remind[5])
+                    except discord.errors.Forbidden:
+                        msg = f'＊＊＊{remind[2]}のDMへの投稿に失敗しました！＊＊＊'
+                        LOG.error(msg)
+
+                        # リマインドを削除
+                        try:
+                            await self.remind.update_status(remind[0], remind[2], self.remind.STATUS_ERROR)
+                        except:
+                            LOG.warning('update中に失敗(おそらく添付用チャンネルの作成、または、添付に失敗)')
+                            continue
+
+                        # DMの通知失敗について連絡
+                        try:
+                            get_control_channel = discord.utils.get(self.bot.get_all_channels(),guild__id=self.remind.saved_dm_guild,name=self.remind.REMIND_CONTROL_CHANNEL)
+                            remind_msg = await get_control_channel.send(f'No.{remind[0]}(DM)は権限不足などの原因でリマインドできませんでした')
+                        except:
+                            msg = f'＊＊＊さらに、{self.remind.saved_dm_guild}(saved_dm_guild)のチャンネル({self.remind.REMIND_CONTROL_CHANNEL})への投稿に失敗しました！＊＊＊'
+                            LOG.error(msg)
+                            continue
                 else:
                     channel = discord.utils.get(self.bot.get_all_channels(),
                                                 guild__id=remind[2],
@@ -72,12 +92,18 @@ class ReminderCog(commands.Cog):
                     if channel is not None:
                         try:
                             remind_msg = await channel.send(remind[5])
-                        except discord.errors.Forbidden:
+                        except:
                             msg = f'＊＊＊{remind[2]}のチャンネルへの投稿に失敗しました！＊＊＊'
                             LOG.error(msg)
+
                             # リマインドを削除
-                            await self.remind.update_status(remind[0], remind[2], self.remind.STATUS_ERROR)
-                            
+                            try:
+                                await self.remind.update_status(remind[0], remind[2], self.remind.STATUS_ERROR)
+                            except:
+                                LOG.warning('update中に失敗(おそらく添付用チャンネルの作成、または、添付に失敗)')
+                                continue
+
+                            # 通知失敗について連絡
                             try:
                                 get_control_channel = discord.utils.get(self.bot.get_all_channels(),guild__id=remind[2],name=self.remind.REMIND_CONTROL_CHANNEL)
                                 remind_msg = await get_control_channel.send(f'@here No.{remind[0]}は権限不足などの原因でリマインドできませんでした。リマインドしたい場合は、投稿先チャンネルの設定見直しをお願いします\n> {remind[5]}')
@@ -89,7 +115,11 @@ class ReminderCog(commands.Cog):
                             continue
 
                 # リマインドを削除
-                await self.remind.update_status(remind[0], remind[2], self.remind.STATUS_FINISHED)
+                try:
+                    await self.remind.update_status(remind[0], remind[2], self.remind.STATUS_FINISHED)
+                except:
+                    LOG.warning('update中に失敗(おそらく添付用チャンネルの作成、または、添付に失敗)')
+                    continue
 
                 # リマインドを繰り返す場合の処理
                 if remind[9] == '1':
@@ -364,7 +394,10 @@ class ReminderCog(commands.Cog):
         guild_id = ctx.guild.id if ctx.guild is not None else None
 
         # リマインドをキャンセル
-        await self.remind.update_status(id, guild_id, self.remind.STATUS_CANCELED)
+        try:
+            await self.remind.update_status(id, guild_id, self.remind.STATUS_CANCELED)
+        except:
+            LOG.warning('コマンドremind_cancel中に失敗(おそらく添付用チャンネルの作成、または、添付に失敗)')
         cancel_msg = f'リマインドをキャンセルしました(No.{cancel_no})'
 
         hidden = True if reply_is_hidden == 'True' else False
@@ -677,6 +710,7 @@ class ReminderCog(commands.Cog):
         slash_commandでエラーが発生した場合の動く処理
         '''
         try:
+            LOG.error(ex)
             raise ex
         except discord.ext.commands.PrivateMessageOnly:
             await ctx.send(f'エラーが発生しました(DM(ダイレクトメッセージ)でのみ実行できます)', hidden = True)
@@ -687,6 +721,10 @@ class ReminderCog(commands.Cog):
         except discord.ext.commands.MissingPermissions:
             if ex.missing_perms[0] == 'administrator':
                 await ctx.send(f'エラーが発生しました(ギルドの管理者のみ実行できます)', hidden = True)
+            else:
+                await ctx.send(f'エラーが発生しました(権限が足りません)', hidden = True)
+        except discord.errors.Forbidden:
+            await ctx.send(f'エラーが発生しました(権限が足りません(おそらくBotが表示/編集できない))', hidden = True)
         except:
             await ctx.send(f'エラーが発生しました({ex})', hidden = True)
 
