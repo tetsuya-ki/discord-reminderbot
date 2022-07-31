@@ -239,11 +239,12 @@ class ReminderCog(commands.Cog):
             else:
                 channel_id = temp_channel.id
         else:
-            channel_id = ctx.channel.id
-
             # チャンネルが設定されておらず、ギルドが無いなら、ギルドとチャンネルをNoneとする
             if guild_id is None:
                 channel_id = None
+            # ギルドがあり、チャンネルが取得できるdekiruならそのチャンネルを使う
+            else:
+                channel_id = ctx.channel.id
 
         today = datetime.datetime.now(self.JST).date()
         # 4桁の数字がない場合、先頭に付けてみる
