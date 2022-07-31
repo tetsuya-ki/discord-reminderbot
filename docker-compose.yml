@@ -16,3 +16,4 @@ services:
       - IS_REPLIT=FALSE
       - RESTRICT_ATTACHMENT_FILE=FALSE
       - PRIORITY_GUILD=__あなたのGuild_IDを入力(数字)__
+      - REMIND_CONTROL_CHANNEL_NAME=remind_control_channel

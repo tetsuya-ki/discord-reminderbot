@@ -16,7 +16,11 @@ class Remind:
     STATUS_PROGRESS = 'Progress'
     STATUS_ERROR = 'Error'
     JST = timezone(timedelta(hours=+9), 'JST')
-    REMIND_CONTROL_CHANNEL = 'remind_control_channel'
+    # 環境変数REMIND_CONTROL_CHANNELにあれば、リマインドの管理先としてそちらの名前を使う(複数のリマインダーBotがあって競合するときに使用)
+    if setting.REMIND_CONTROL_CHANNEL_NAME:
+        REMIND_CONTROL_CHANNEL = setting.REMIND_CONTROL_CHANNEL_NAME
+    else:
+        REMIND_CONTROL_CHANNEL = 'remind_control_channel'
 
     def __init__(self, bot):
         self.bot = bot

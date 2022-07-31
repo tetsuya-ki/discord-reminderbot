@@ -188,6 +188,13 @@
   - 権限の問題で、Botがファイル保管に失敗することがあるため、失敗時に添付するギルドを指定できる
 - 例: PRIORITY_GUILD=99999999999
 
+### REMIND_CONTROL_CHANNEL_NAME
+
+- リマインダーのデータを保存するチャンネル名を指定できます(未指定の場合remind_control_channel)
+  - 他のギルドもその名前のチャンネルが保存先に使われるので気をつけてください
+  - テスト中に複数のリマインダーBot動かしてて困ったので作成した環境変数です(基本開発に使うもの)
+- 例: REMIND_CONTROL_CHANNEL_NAME=リマインドチャンネル
+
 ## 動かし方
 
 - wikiに書くつもりです(時期未定)
@@ -232,6 +239,7 @@ services:
       - IS_REPLIT=FALSE
       - RESTRICT_ATTACHMENT_FILE=FALSE
       - PRIORITY_GUILD=__あなたのGuild_IDを入力(数字)__
+      - REMIND_CONTROL_CHANNEL_NAME=remind_control_channel
 ```
 
 #### 起動・停止操作
