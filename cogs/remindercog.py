@@ -272,8 +272,15 @@ class ReminderCog(commands.Cog):
             # チャンネルが設定されておらず、ギルドが無いなら、ギルドとチャンネルをNoneとする
             if guild_id is None:
                 channel_id = None
-            # ギルドがあり、チャンネルが取得できるdekiruならそのチャンネルを使う
+            # ギルドがあり、チャンネルが取得できるならそのチャンネルを使う
             else:
+                # sendが存在しない場合は、ボイスチャンネル内チャンネルだと想定しDMでダメですメッセージを送付
+                if not hasattr(ctx.channel, 'send'):
+                    msg = 'リマインド登録に失敗しました。ボイスチャンネル内のチャンネルは指定できません(DMで申し訳ないです)\n他のチャンネルで実行するか、オプションのchannel部分をボイスチャンネル以外で登録してください(#チャンネル名でもOK)'
+                    channel = await ctx.author.create_dm()
+                    await channel.send(msg)
+                    LOG.info(msg)
+                    return
                 channel_id = ctx.channel.id
 
         today = datetime.datetime.now(self.JST).date()
