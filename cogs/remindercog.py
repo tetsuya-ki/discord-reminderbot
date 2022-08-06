@@ -17,7 +17,7 @@ LOG = getLogger('reminderbot')
 # コグとして用いるクラスを定義。
 class ReminderCog(commands.Cog):
     guilds = [] if setting.ENABLE_SLASH_COMMAND_GUILD_ID_LIST is None else list(
-        map(int, setting.ENABLE_SLASH_COMMAND_GUILD_ID_LIST.split(';')))
+        map(lambda x: x if x.isdigit() else '', setting.ENABLE_SLASH_COMMAND_GUILD_ID_LIST.split(';')))
     JST = timezone(timedelta(hours=9), 'JST')
     NUM_1keta = '^[0-9]$'
 
@@ -64,23 +64,49 @@ class ReminderCog(commands.Cog):
                         remind_user = await self.bot.fetch_user(remind[3])
                         text = remind_user or ''
                     channel = await remind_user.create_dm()
-                    await channel.send(remind[5])
+                    try:
+                        remind_msg = await channel.send(remind[5])
+                    except discord.errors.Forbidden:
+                        msg = f'＊＊＊{remind[2]}のDMへの投稿に失敗しました！＊＊＊'
+                        LOG.error(msg)
+
+                        # リマインドを削除
+                        try:
+                            await self.remind.update_status(remind[0], remind[2], self.remind.STATUS_ERROR)
+                        except:
+                            LOG.warning('update中に失敗(おそらく添付用チャンネルの作成、または、添付に失敗)')
+                            continue
+
+                        # DMの通知失敗について連絡
+                        try:
+                            get_control_channel = discord.utils.get(self.bot.get_all_channels(),guild__id=self.remind.saved_dm_guild,name=self.remind.REMIND_CONTROL_CHANNEL)
+                            remind_msg = await get_control_channel.send(f'No.{remind[0]}(DM)は権限不足などの原因でリマインドできませんでした')
+                        except:
+                            msg = f'＊＊＊さらに、{self.remind.saved_dm_guild}(saved_dm_guild)のチャンネル({self.remind.REMIND_CONTROL_CHANNEL})への投稿に失敗しました！＊＊＊'
+                            LOG.error(msg)
+                            continue
                 else:
                     channel = discord.utils.get(self.bot.get_all_channels(),
                                                 guild__id=remind[2],
                                                 id=remind[4])
                     if channel is not None:
                         try:
-                            await channel.send(remind[5])
-                        except discord.errors.Forbidden:
+                            remind_msg = await channel.send(remind[5])
+                        except:
                             msg = f'＊＊＊{remind[2]}のチャンネルへの投稿に失敗しました！＊＊＊'
                             LOG.error(msg)
+
                             # リマインドを削除
-                            await self.remind.update_status(remind[0], remind[2], self.remind.STATUS_ERROR)
-                            
+                            try:
+                                await self.remind.update_status(remind[0], remind[2], self.remind.STATUS_ERROR)
+                            except:
+                                LOG.warning('update中に失敗(おそらく添付用チャンネルの作成、または、添付に失敗)')
+                                continue
+
+                            # 通知失敗について連絡
                             try:
                                 get_control_channel = discord.utils.get(self.bot.get_all_channels(),guild__id=remind[2],name=self.remind.REMIND_CONTROL_CHANNEL)
-                                await get_control_channel.send(f'@here No.{remind[0]}は権限不足などの原因でリマインドできませんでした。リマインドしたい場合は、投稿先チャンネルの設定見直しをお願いします\n> {remind[5]}')
+                                remind_msg = await get_control_channel.send(f'@here No.{remind[0]}は権限不足などの原因でリマインドできませんでした。リマインドしたい場合は、投稿先チャンネルの設定見直しをお願いします\n> {remind[5]}')
                             except:
                                 msg = f'＊＊＊さらに、{remind[2]}のチャンネル({self.remind.REMIND_CONTROL_CHANNEL})への投稿に失敗しました！＊＊＊'
                                 LOG.error(msg)
@@ -89,7 +115,11 @@ class ReminderCog(commands.Cog):
                             continue
 
                 # リマインドを削除
-                await self.remind.update_status(remind[0], remind[2], self.remind.STATUS_FINISHED)
+                try:
+                    await self.remind.update_status(remind[0], remind[2], self.remind.STATUS_FINISHED)
+                except:
+                    LOG.warning('update中に失敗(おそらく添付用チャンネルの作成、または、添付に失敗)')
+                    continue
 
                 # リマインドを繰り返す場合の処理
                 if remind[9] == '1':
@@ -107,31 +137,35 @@ class ReminderCog(commands.Cog):
                     # 計算できなかったら、飛ばす
                     if next_remind_datetime is None:
                         LOG.warning(f'No.{remind[0]}の{remind[10]}が計算できなかったため、飛ばしました。')
-                        await channel.send(f'次回のリマインドに失敗しました(No.{remind[0]}の{remind[10]}が計算できなかったため)')
+                        await remind_msg.reply(f'次回のリマインドに失敗しました(No.{remind[0]}の{remind[10]}が計算できなかったため)')
                         continue
 
                     status = self.remind.STATUS_PROGRESS
 
                     # 繰り返し回数のチェック
                     repeat_count = remind[7] + 1
-                    if remind[8] is None or (remind[8].isdecimal() and repeat_count < remind[8]):
+                    remind_repeat_max_str = str(remind[8])
+                    if remind[8] is None or (remind_repeat_max_str.isdecimal() and repeat_count < remind[8]):
                         repeat_flg = '1'
-                    elif remind[8].isdecimal() and repeat_count > remind[8]:
-                        LOG.warning(f'No.{remind[0]}のrepeat_max_count({remind[8]})を超えているため、追加をしません。')
+                    elif remind_repeat_max_str.isdecimal() and repeat_count > remind[8]:
+                        LOG.warning(f'No.{remind[0]}のrepeat_max_count({remind_repeat_max_str})を超えているため、追加をしません。')
                         continue
                     else:
                         repeat_flg = '0'
-                        if not remind[8].isdecimal():
-                            LOG.warning(f'繰り返し上限に数字以外が登録されました。remind[8]は{str(remind[8])}')
+                        if not remind_repeat_max_str.isdecimal():
+                            LOG.warning(f'繰り返し上限に数字以外が登録されました。remind[8]は{remind_repeat_max_str}')
 
-                    # 繰り返し時のメッセージを変更
+                    # 繰り返し時のメッセージを変更(最後の行がURLの場合は繰り返し番号をつけない)
                     last_remind_message = re.sub('\(\d+\)','', remind[5])
-                    remind_message = f'{last_remind_message}({repeat_count})' if repeat_count > 1 else remind[5]
+                    last_line_url = re.search(r'https?://[a-zA-Z0-9/:%#\$&?()~.=+_-]+\Z', remind[5])
+                    remind_message =  remind[5]
+                    if repeat_count > 1 and last_line_url is None:
+                        remind_message = f'{last_remind_message}({repeat_count})'
 
                     id = await self.remind.make(remind[2], remind[3], next_remind_datetime, remind_message, remind[4], status, repeat_flg,
                         remind[10], repeat_count, remind[8])
                     if channel:
-                        await channel.send(f'次回のリマインドを登録しました(No.{id})')
+                        await remind_msg.reply(f'次回のリマインドを登録しました(No.{id})')
                     else:
                         LOG.error(f'channelがないので、メッセージ送れませんでした！(No.{id})')
 
@@ -235,11 +269,19 @@ class ReminderCog(commands.Cog):
             else:
                 channel_id = temp_channel.id
         else:
-            channel_id = ctx.channel.id
-
             # チャンネルが設定されておらず、ギルドが無いなら、ギルドとチャンネルをNoneとする
             if guild_id is None:
                 channel_id = None
+            # ギルドがあり、チャンネルが取得できるならそのチャンネルを使う
+            else:
+                # sendが存在しない場合は、ボイスチャンネル内チャンネルだと想定しDMでダメですメッセージを送付
+                if not hasattr(ctx.channel, 'send'):
+                    msg = 'リマインド登録に失敗しました。ボイスチャンネル内のチャンネルは指定できません(DMで申し訳ないです)\n他のチャンネルで実行するか、オプションのchannel部分をボイスチャンネル以外で登録してください(#チャンネル名でもOK)'
+                    channel = await ctx.author.create_dm()
+                    await channel.send(msg)
+                    LOG.info(msg)
+                    return
+                channel_id = ctx.channel.id
 
         today = datetime.datetime.now(self.JST).date()
         # 4桁の数字がない場合、先頭に付けてみる
@@ -304,8 +346,13 @@ class ReminderCog(commands.Cog):
         repeat_count = 1
 
         # 実際の処理(remind.pyでやる)
-        id = await self.remind.make(guild_id, ctx.author.id, remind_datetime, message, channel_id, status, repeat_flg,
-                        repeat_interval, repeat_count, repeat_max_count)
+        try:
+            id = await self.remind.make(guild_id, ctx.author.id, remind_datetime, message, channel_id, status, repeat_flg,
+                            repeat_interval, repeat_count, repeat_max_count)
+        except:
+            # 失敗した場合自分で最後のidを取得
+            id = self.remind.get_last_id()
+            LOG.warning('コマンドremind_make中に失敗(おそらく添付用チャンネルの作成、または、添付に失敗)')
 
         hidden = True if reply_is_hidden == 'True' else False
         await ctx.send(f'リマインドを登録しました(No.{id})', hidden = hidden)
@@ -359,7 +406,10 @@ class ReminderCog(commands.Cog):
         guild_id = ctx.guild.id if ctx.guild is not None else None
 
         # リマインドをキャンセル
-        await self.remind.update_status(id, guild_id, self.remind.STATUS_CANCELED)
+        try:
+            await self.remind.update_status(id, guild_id, self.remind.STATUS_CANCELED)
+        except:
+            LOG.warning('コマンドremind_cancel中に失敗(おそらく添付用チャンネルの作成、または、添付に失敗)')
         cancel_msg = f'リマインドをキャンセルしました(No.{cancel_no})'
 
         hidden = True if reply_is_hidden == 'True' else False
@@ -518,6 +568,33 @@ class ReminderCog(commands.Cog):
         hidden = True if reply_is_hidden == 'True' else False
         await ctx.send(msg, hidden = hidden)
 
+    @commands.is_owner()
+    @cog_ext.cog_slash(
+        name='delete-old-data',
+        description='<注意>完了したremindをぜんぶ削除する(BotのオーナーのみDMで実行可能です！)',
+        # guild_ids=guilds,
+        options=[
+            manage_commands.create_option(name='reply_is_hidden',
+                                        description='Botの実行結果を全員に見せるどうか(リマインド自体は普通です/他の人にもリマインド使わせたい場合、全員に見せる方がオススメです))',
+                                        option_type=3,
+                                        required=False,
+                                        choices=[
+                                            manage_commands.create_choice(
+                                            name='自分のみ',
+                                            value='True'),
+                                            manage_commands.create_choice(
+                                            name='全員に見せる',
+                                            value='False')
+                                        ])
+        ])
+    async def _delete_old_data(self, ctx, reply_is_hidden: str = 'True'):
+        LOG.info('remindをdelete(owner)するぜ！')
+        self.check_printer_is_running()
+
+        await self.remind.delete_old_reminder(ctx)
+        hidden = True if reply_is_hidden == 'True' else False
+        await ctx.send('ステータスが完了のリマインドを全て削除しました', hidden = hidden)
+
     def calc_next_reminder_date(self, remind_datetime, repeat_interval):
         re_minutes = r'([0-9]*)mi$'
         next_remind_datetime = self.re_reminder_date(re_minutes, repeat_interval, remind_datetime, 'minutes')
@@ -645,6 +722,7 @@ class ReminderCog(commands.Cog):
         slash_commandでエラーが発生した場合の動く処理
         '''
         try:
+            LOG.error(ex)
             raise ex
         except discord.ext.commands.PrivateMessageOnly:
             await ctx.send(f'エラーが発生しました(DM(ダイレクトメッセージ)でのみ実行できます)', hidden = True)
@@ -655,6 +733,10 @@ class ReminderCog(commands.Cog):
         except discord.ext.commands.MissingPermissions:
             if ex.missing_perms[0] == 'administrator':
                 await ctx.send(f'エラーが発生しました(ギルドの管理者のみ実行できます)', hidden = True)
+            else:
+                await ctx.send(f'エラーが発生しました(権限が足りません)', hidden = True)
+        except discord.errors.Forbidden:
+            await ctx.send(f'エラーが発生しました(権限が足りません(おそらくBotが表示/編集できない))', hidden = True)
         except:
             await ctx.send(f'エラーが発生しました({ex})', hidden = True)
 

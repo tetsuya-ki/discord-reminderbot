@@ -5,7 +5,7 @@
 - スラッシュコマンド（[eunwoo1104 / discord-py-slash-command](https://github.com/eunwoo1104/discord-py-slash-command)）が使えるため、コマンドを覚える必要がなく、それぞれのオプションの意味が表示されます
   - [有名なリマインダーBotが定期実行に寄付が必要](https://qiita.com/kbt0401/items/1d26f2c99580647e12dc)という記事を見て作ってみました
 - 以下の招待リンクからお試しできます
-  - 招待リンク: <https://discord.com/api/oauth2/authorize?client_id=865141043891798060&permissions=2147723280&scope=bot%20applications.commands>
+  - 招待リンク: <https://discord.com/api/oauth2/authorize?client_id=873515660674756639&permissions=2147723280&scope=bot%20applications.commands>
   - 止まってたりしたらこっそり教えてください(その前に、`/remind-task-check`で直るかもしれません)
 
 ## 機能
@@ -59,12 +59,13 @@
     - 例→`2`としたら、1回目の通知の後に**繰り返し間隔だけ遅らせたリマインドが作成されます**。2回目を通知し、それ以降は通知されません
       - 具体例: `/remind-make date:2021/3/26 time:21:00 message:@here test!!! repeat_interval:2d repeat_max_count:2`
         - 2021/3/26 21:00に「@here test!!!」が通知され、2回目として2021/3/28 21:00に「@here test!!!(2)」が通知されます
-        - 2回目以降は勝手に、メッセージに連番をふります
+        - 2回目以降は勝手に、メッセージに連番をふります(URLの場合のみ連番をふりません)
       - 追加で通知したい場合は別途リマインドを作成してください
   - channel(リマインドするチャンネル)
     - #xxxxで指定したチャンネルにリマインドします
     - そのままチャンネル名を指定することもできます
     - このオプションが**ない場合、コマンドを実行したチャンネルにリマインドします**
+      - ただし、ボイスチャンネル内のチャンネルで実行した場合は登録できません(DMで登録失敗の旨連絡)
   - reply_is_hidden
     - 自分のみ
       - 実行結果は自分だけ見ることができます
@@ -105,7 +106,7 @@
 
 ### `/remind-list-all`
 
-- BotとのDMのみ、かつ、Botのオーナーのみ使用可能
+- BotとのDMのみ、かつ、Botのオーナー(DiscordのBotのトークンを生成した人)のみ使用可能
 - Botに登録されているリマインドをすべて表示します
 - オプション
   - status
@@ -123,7 +124,6 @@
 
 ### `/remind-task-check`
 
-- Botのオーナーのみ使用可能
 - BotのTaskが正常に動いているかチェックする(止まってたらTaskを開始するはず)
 - オプション
   - reply_is_hidden
@@ -131,6 +131,11 @@
       - 実行結果は自分だけ見ることができます
     - 全員に見せる
       - 実行結果はBotからのリプライとして表示されます
+
+### `delete-old-data`
+
+- Botのオーナー(DiscordのBotのトークンを生成した人)のみ使用可能
+- ステータスが「完了」のリマインドをすべて削除(添付ファイルの容量が厳しいため)
 
 ### その他のコマンドは検討中です(リマインドの削除など実装予定)
 
@@ -184,20 +189,70 @@
   - 権限の問題で、Botがファイル保管に失敗することがあるため、失敗時に添付するギルドを指定できる
 - 例: PRIORITY_GUILD=99999999999
 
+### REMIND_CONTROL_CHANNEL_NAME
+
+- リマインダーのデータを保存するチャンネル名を指定できます(未指定の場合remind_control_channel)
+  - 他のギルドもその名前のチャンネルが保存先に使われるので気をつけてください
+  - テスト中に複数のリマインダーBot動かしてて困ったので作成した環境変数です(基本開発に使うもの)
+- 例: REMIND_CONTROL_CHANNEL_NAME=リマインドチャンネル
+
 ## 動かし方
 
 - wikiに書くつもりです(時期未定)
 - わからないことがあれば[Discussions](https://github.com/tetsuya-ki/discord-reminderbot/discussions)に書いてみてください
 
-### 前提
+### 普通に動かす場合
+
+#### 前提
 
 - poetryがインストールされていること
-- `.env`が作成されていること
+- `.env.sample`をコピーし、`.env`が作成されていること(それぞれの環境変数の意味は[環境変数](#環境変数)を参照ください)
 
-### 動かす
+#### 動かす
 
 - 以下のコマンドを実行
 
 ```sh
 poetry run python discord-reminderbot.py
 ```
+
+### docker-composeを用いた起動手順
+
+#### 前提(docker-compose)
+
+- `docker`,`docker-compose`コマンドが利用できること
+
+#### 環境変数の設定
+
+- `.env`の準備の代わりに、`docker-compose.override.yml`を作成して環境変数を記載
+
+```docker
+version: "3"
+
+services:
+  app:
+    environment:
+      - DISCORD_TOKEN=__あなたのDicordトークン__
+      - LOG_LEVEL=INFO
+      - ENABLE_SLASH_COMMAND_GUILD_ID_LIST= __あなたのGuild_IDを入力(数字/複数あるなら;を挟むこと。グローバルコマンドの場合は入力しないこと！(その場合1時間程度登録に時間がかかる可能性があります))__
+      - KEEP_DECRYPTED_FILE=FALSE
+      - IS_HEROKU=FALSE
+      - IS_REPLIT=FALSE
+      - RESTRICT_ATTACHMENT_FILE=FALSE
+      - PRIORITY_GUILD=__あなたのGuild_IDを入力(数字)__
+      - REMIND_CONTROL_CHANNEL_NAME=remind_control_channel
+```
+
+#### 起動・停止操作
+
+- Dockerイメージのビルド
+`docker-compose build`
+
+- 起動
+`docker-compose up -d`
+
+- 停止
+`docker-compose down`
+
+- ログ出力
+`docker-compose logs -f`

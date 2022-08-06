@@ -21,6 +21,7 @@ yarl = "1.5.1"
 toml = "^0.10.2"
 pycryptodome = "^3.10.1"
 discord-py-interactions = "^3.0.2"
+markupsafe = "2.0.1"
 
 [tool.poetry.dev-dependencies]
 

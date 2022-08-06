@@ -16,7 +16,11 @@ class Remind:
     STATUS_PROGRESS = 'Progress'
     STATUS_ERROR = 'Error'
     JST = timezone(timedelta(hours=+9), 'JST')
-    REMIND_CONTROL_CHANNEL = 'remind_control_channel'
+    # 環境変数REMIND_CONTROL_CHANNELにあれば、リマインドの管理先としてそちらの名前を使う(複数のリマインダーBotがあって競合するときに使用)
+    if setting.REMIND_CONTROL_CHANNEL_NAME:
+        REMIND_CONTROL_CHANNEL = setting.REMIND_CONTROL_CHANNEL_NAME
+    else:
+        REMIND_CONTROL_CHANNEL = 'remind_control_channel'
 
     def __init__(self, bot):
         self.bot = bot
@@ -147,7 +151,11 @@ class Remind:
                 try:
                     get_control_channel = await guild.create_text_channel(name=self.REMIND_CONTROL_CHANNEL, overwrites=overwrites)
                     LOG.info(f'＊＊＊{self.REMIND_CONTROL_CHANNEL}を作成しました！＊＊＊')
-                except discord.errors.Forbidden:
+                except (discord.errors.Forbidden,) as e:
+                    msg = f'＊＊＊{self.REMIND_CONTROL_CHANNEL}の作成に失敗しました！＊＊＊\n{e}'
+                    LOG.error(msg)
+                    raise
+                except:
                     msg = f'＊＊＊{self.REMIND_CONTROL_CHANNEL}の作成に失敗しました！＊＊＊'
                     LOG.error(msg)
                     raise
@@ -222,9 +230,7 @@ class Remind:
             LOG.debug(insert_sql)
 
             # get id
-            get_id_sql = 'select id from reminder_table where rowid = last_insert_rowid()'
-            cur.execute(get_id_sql)
-            id = cur.fetchone()[0]
+            id = self.get_last_id(conn, False)
             LOG.debug(f'id:{id}を追加しました')
             conn.commit()
             self.read()
@@ -365,3 +371,42 @@ class Remind:
             LOG.debug(escaped_mention_text)
         self.encode()
         return row
+
+    async def delete_old_reminder(self, ctx: commands.Context):
+        self.decode()
+        conn = sqlite3.connect(self.FILE_PATH)
+        with conn:
+            cur = conn.cursor()
+            delete_sql = f'''delete from reminder_table where status = '{self.STATUS_FINISHED}' '''
+            LOG.debug(delete_sql)
+            cur.execute(delete_sql)
+            LOG.debug('delete finished reminder')
+            conn.commit()
+            cur.execute('vacuum')
+        self.read()
+        self.encode()
+        guild = ctx.guild
+        if guild is None:
+            guild = self.saved_dm_guild
+        # Herokuの時のみ、チャンネルにファイルを添付する
+        try:
+            await self.set_discord_attachment_file(guild)
+        except discord.errors.Forbidden:
+            msg = f'＊＊＊{guild.name}へのチャンネル作成に失敗したため、dm_guildへ添付します＊＊＊'
+            LOG.info(msg)
+            guild = discord.utils.get(self.bot.guilds, id=self.saved_dm_guild)
+            await self.set_discord_attachment_file(guild)
+
+    def get_last_id(self, conn = None, decode_flg = True):
+        if conn is None:
+            conn = sqlite3.connect(self.FILE_PATH)
+        if decode_flg:
+            self.decode()
+        with conn:
+            cur = conn.cursor()
+            get_id_sql = 'select id from reminder_table order by id desc limit 1'
+            cur.execute(get_id_sql)
+            last_id = cur.fetchone()[0]
+        if decode_flg:
+            self.encode()
+        return last_id
