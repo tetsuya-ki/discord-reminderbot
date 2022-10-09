@@ -2,7 +2,7 @@
 # このBotについて
 
 - Discordでリマインダーを使うBotです(リマインドの定期実行も可能)
-- スラッシュコマンド（[eunwoo1104 / discord-py-slash-command](https://github.com/eunwoo1104/discord-py-slash-command)）が使えるため、コマンドを覚える必要がなく、それぞれのオプションの意味が表示されます
+- discord.py v2.0のスラッシュコマンドが使えるため、コマンドを覚える必要がなく、それぞれのオプションの意味が表示されます
   - [有名なリマインダーBotが定期実行に寄付が必要](https://qiita.com/kbt0401/items/1d26f2c99580647e12dc)という記事を見て作ってみました
 - 以下の招待リンクからお試しできます
   - 招待リンク: <https://discord.com/api/oauth2/authorize?client_id=873515660674756639&permissions=2147723280&scope=bot%20applications.commands>
@@ -160,15 +160,6 @@
 - ログレベル(DEBUG/INFO/WARNING/ERROR)
 - 例: LOG_LEVEL="INFO"
 
-### ENABLE_SLASH_COMMAND_GUILD_ID_LIST(**使用するにはソースの修正が必要です**)
-
-- この環境変数を使用する場合、ソースの修正をしてください
-  - それぞれのメソッドにある、@cog_ext.cog_slashのguildsについてのコメントアウトを解除する必要があります
-- スラッシュコマンドを有効にするギルドID(複数ある場合は「;」を間に挟むこと)
-- 例
-  - 1件の場合: ENABLE_SLASH_COMMAND_GUILD_ID_LIST=18471289371923
-  - 2件の場合: ENABLE_SLASH_COMMAND_GUILD_ID_LIST=18471289371923;1389103890128390
-
 ### KEEP_DECRYPTED_FILE
 
 - 復号されたファイルを残すかどうか(TRUEの時のみ残す。デフォルトでは復号されたファイルは削除される)
@@ -204,6 +195,23 @@
   - 他のギルドもその名前のチャンネルが保存先に使われるので気をつけてください
   - テスト中に複数のリマインダーBot動かしてて困ったので作成した環境変数です(基本開発に使うもの)
 - 例: REMIND_CONTROL_CHANNEL_NAME=リマインドチャンネル
+
+### APPLICATION_ID
+
+- あなたのBotの`APPLICATION ID`を指定する(スラッシュコマンドを使う上で設定が必須となります)。[v1.0.0](https://github.com/tetsuya-ki/discord-reminderbot/releases/tag/v1.0.0)で追加
+  - [開発者ポータル](https://discord.com/developers/applications/)の該当Botの`General Information`の上部にある、`APPLICATION ID`
+
+### ENABLE_SLASH_COMMAND_GUILD_ID
+
+- あなたのBotのテストする際はテスト用のギルドですぐに使用したいものと思われます(グローバルコマンドは適用まで時間がかかってしまう)
+- その場合、この環境変数にテスト用ギルドのIDを設定することで、すぐにスラッシュコマンドが試せます(ギルドコマンドとして設定する)。[v1.0.0](https://github.com/tetsuya-ki/discord-reminderbot/releases/tag/v1.0.0)で追加
+  - 設定が**複数存在する場合、「;」を挟む必要**がある
+    - 1件の場合: ENABLE_SLASH_COMMAND_GUILD_ID=18471289371923
+    - 2件の場合: ENABLE_SLASH_COMMAND_GUILD_ID=18471289371923;1389103890128390
+
+### 廃止された環境変数
+
+- `ENABLE_SLASH_COMMAND_GUILD_ID_LIST`: ENABLE_SLASH_COMMAND_GUILD_IDに置き換えられました
 
 ## 動かし方
 
@@ -243,13 +251,14 @@ services:
     environment:
       - DISCORD_TOKEN=__あなたのDicordトークン__
       - LOG_LEVEL=INFO
-      - ENABLE_SLASH_COMMAND_GUILD_ID_LIST= __あなたのGuild_IDを入力(数字/複数あるなら;を挟むこと。グローバルコマンドの場合は入力しないこと！(その場合1時間程度登録に時間がかかる可能性があります))__
+      - ENABLE_SLASH_COMMAND_GUILD_ID= __あなたのGuild_IDを入力(数字/複数あるなら;を挟むこと。グローバルコマンドの場合は入力しないこと！(その場合1時間程度登録に時間がかかる可能性があります))__
       - KEEP_DECRYPTED_FILE=FALSE
       - IS_HEROKU=FALSE
       - IS_REPLIT=FALSE
       - RESTRICT_ATTACHMENT_FILE=FALSE
       - PRIORITY_GUILD=__あなたのGuild_IDを入力(数字)__
       - REMIND_CONTROL_CHANNEL_NAME=remind_control_channel
+      - APPLICATION_ID=__あなたのBotのAPPLICATION_IDを入力(数字)__
 ```
 
 #### 起動・停止操作

@@ -2,12 +2,11 @@ from datetime import timedelta, timezone
 from dateutil import rrule
 from dateutil.relativedelta import relativedelta
 from discord.ext import tasks, commands
-from discord.ext.commands import context
-from discord_slash import cog_ext, SlashContext
-from discord_slash.utils import manage_commands  # Allows us to manage the command settings.
+from discord import app_commands
 from logging import getLogger
+from typing import Literal
 from .modules.remind import Remind
-from .modules import setting
+from .modules import settings
 
 import datetime, dateutil.parser, discord, re
 
@@ -16,15 +15,16 @@ LOG = getLogger('reminderbot')
 
 # コグとして用いるクラスを定義。
 class ReminderCog(commands.Cog):
-    guilds = [] if setting.ENABLE_SLASH_COMMAND_GUILD_ID_LIST is None else list(
-        map(lambda x: x if x.isdigit() else '', setting.ENABLE_SLASH_COMMAND_GUILD_ID_LIST.split(';')))
+    guilds = settings.ENABLE_SLASH_COMMAND_GUILD_ID
     JST = timezone(timedelta(hours=9), 'JST')
     NUM_1keta = '^[0-9]$'
+    SHOW_ME = '自分のみ'
 
     # ReminderCogクラスのコンストラクタ。Botを受取り、インスタンス変数として保持。
     def __init__(self, bot):
         self.bot = bot
         self.remind = Remind(bot)
+        self.info = None
 
     # 読み込まれた時の処理
     @commands.Cog.listener()
@@ -32,11 +32,12 @@ class ReminderCog(commands.Cog):
         dm_guild = self.bot.guilds[0].id if len(self.bot.guilds) > 0 else None
 
         # PRIORITY_GUILDがある場合の上書き
-        if setting.PRIORITY_GUILD and setting.PRIORITY_GUILD.isdecimal():
-            pr_guild = [i for i in self.bot.guilds if i.id == int(setting.PRIORITY_GUILD)]
+        if settings.PRIORITY_GUILD and settings.PRIORITY_GUILD.isdecimal():
+            pr_guild = [i for i in self.bot.guilds if i.id == int(settings.PRIORITY_GUILD)]
             if len(pr_guild) > 0:
                 dm_guild = pr_guild[0].id
         await self.remind.prepare(dm_guild)  # dbを作成
+        self.info = await self.bot.application_info()
         LOG.info('SQlite準備完了')
         LOG.debug(self.bot.guilds)
         self.printer.start()
@@ -76,7 +77,7 @@ class ReminderCog(commands.Cog):
                         try:
                             await self.remind.update_status(remind[0], remind[2], self.remind.STATUS_ERROR)
                         except:
-                            LOG.warning('update中に失敗(おそらく添付用チャンネルの作成、または、添付に失敗)')
+                            LOG.warning('リマインドを削除(投稿失敗/DM)/update中に失敗(おそらく添付用チャンネルの作成、または、添付に失敗)')
                             continue
 
                         # DMの通知失敗について連絡
@@ -102,7 +103,7 @@ class ReminderCog(commands.Cog):
                             try:
                                 await self.remind.update_status(remind[0], remind[2], self.remind.STATUS_ERROR)
                             except:
-                                LOG.warning('update中に失敗(おそらく添付用チャンネルの作成、または、添付に失敗)')
+                                LOG.warning('リマインドを削除(投稿失敗/CH)/update中に失敗(おそらく添付用チャンネルの作成、または、添付に失敗)')
                                 continue
 
                             # 通知失敗について連絡
@@ -120,7 +121,7 @@ class ReminderCog(commands.Cog):
                 try:
                     await self.remind.update_status(remind[0], remind[2], self.remind.STATUS_FINISHED)
                 except:
-                    LOG.warning('update中に失敗(おそらく添付用チャンネルの作成、または、添付に失敗)')
+                    LOG.warning('リマインドを削除/update中に失敗(リマインドを削除/おそらく添付用チャンネルの作成、または、添付に失敗)')
                     continue
 
                 # リマインドを繰り返す場合の処理
@@ -174,74 +175,43 @@ class ReminderCog(commands.Cog):
             else:
                 break
 
-    @cog_ext.cog_slash(
+    @app_commands.command(
         name='remind-make',
-        # guild_ids=guilds,
-        description='remindを作成する',
-        options=[
-            manage_commands.create_option(name='date',
-                                        description='日付(mm/dd形式)、もしくは、何日後かの数字1桁(0-9)。年がある場合はyyyy/mm/dd形式(yyyy-mm-dd形式も可)',
-                                        option_type=3,
-                                        required=True),
-            manage_commands.create_option(name='time',
-                                        description='時間(hh24:mi形式)、もしくは、xxh(xxは数字(0-9)。xx時間後)、xxmi(xx分後)',
-                                        option_type=3,
-                                        required=True),
-            manage_commands.create_option(name='message',
-                                        description='メッセージ(<br>か@@@などで改行。メンションは通常のメッセージのように @xxxx と書く)',
-                                        option_type=3,
-                                        required=True),
-            manage_commands.create_option(name='repeat_interval',
-                                        description='繰り返し間隔(数字+英字を付与：分(mi)/時間(h)/日(d)/週(w)/月(m)/年(y)か、特殊(平日/休日/月初/月末/曜日文字列(「月水」など)))',
-                                        option_type=3,
-                                        required=False),
-            manage_commands.create_option(name='repeat_max_count',
-                                        description='繰り返し最大数(設定がない場合、ずっと繰り返されます)',
-                                        option_type=3,
-                                        required=False),
-            manage_commands.create_option(name='channel',
-                                        description='リマインドを投稿するチャンネル(#general等。「DM」でBotとのDMへ登録されます。未指定の場合はリマインド登録したチャンネルに投稿)',
-                                        option_type=3,
-                                        required=False),
-            manage_commands.create_option(name='reply_is_hidden',
-                                        description='Botの実行結果を全員に見せるどうか(リマインド自体は普通です/他の人にもリマインドを使わせたい場合、全員に見せる方がオススメです))',
-                                        option_type=3,
-                                        required=False,
-                                        choices=[
-                                            manage_commands.create_choice(
-                                            name='自分のみ',
-                                            value='True'),
-                                            manage_commands.create_choice(
-                                            name='全員に見せる',
-                                            value='False')
-                                        ])
-        ])
+        description='remindを作成する')
+    @app_commands.describe(
+        date='日付(mm/dd形式)、もしくは、何日後かの数字1桁(0-9)。年がある場合はyyyy/mm/dd形式(yyyy-mm-dd形式も可)')
+    @app_commands.describe(
+        time='時間(hh24:mi形式)、もしくは、xxh(xxは数字(0-9)。xx時間後)、xxmi(xx分後)')
+    @app_commands.describe(
+        message='メッセージ(<br>か@@@などで改行。メンションは通常のメッセージのように @xxxx と書く)')
+    @app_commands.describe(
+        repeat_interval='繰り返し間隔(数字+英字を付与：分(mi)/時間(h)/日(d)/週(w)/月(m)/年(y)か、特殊(平日/休日/月初/月末/曜日文字列(「月水」など)))')
+    @app_commands.describe(
+        repeat_max_count='繰り返し最大数(設定がない場合、ずっと繰り返されます)')
+    @app_commands.describe(
+        channel='リマインドを投稿するチャンネル(#general等。「DM」でBotとのDMへ登録されます。未指定の場合はリマインド登録したチャンネルに投稿)')
+    @app_commands.describe(
+        reply_is_hidden='Botの実行結果を全員に見せるどうか(リマインド自体は普通です/他の人にもリマインドを使わせたい場合、全員に見せる方がオススメです))')
     async def _remind_make(self,
-                        ctx,
-                        date: str = None,
-                        time: str = None,
-                        message: str = None,
+                        interaction: discord.Interaction,
+                        date: str,
+                        time: str,
+                        message: str,
                         repeat_interval: str = None,
-                        repeat_max_count: str = None,
+                        repeat_max_count: app_commands.Range[int, 1, 999] = None,
                         channel: str = None,
-                        reply_is_hidden: str = 'True'):
+                        reply_is_hidden: Literal['自分のみ', '全員に見せる'] = SHOW_ME):
         LOG.info('remindをmakeするぜ！')
+        hidden = True if reply_is_hidden == self.SHOW_ME else False
         self.check_printer_is_running()
 
-        # チェック処理(存在しない場合、引数が不正な場合など)
-        if repeat_max_count is not None and not repeat_max_count.isdecimal():
-            msg = '繰り返し最大数が数字ではありません。繰り返したい回数か、未設定としてください（未設定の場合はキャンセルするまでずっとリマインドします）。'
-            await ctx.send(msg, hidden = True)
-            LOG.info(msg)
-            return
-
         # ギルドの設定
-        if ctx.guild is not None:
-            guild_id = ctx.guild.id
+        if interaction.guild is not None:
+            guild_id = interaction.guild.id
         else:
             if channel is not None and channel.upper() != 'DM':
                 msg = 'DMでチャンネル指定はできません。チャンネルは未指定でリマインドを登録ください。'
-                await ctx.send(msg, hidden = True)
+                await interaction.response.send_message(msg, ephemeral=True)
                 LOG.info(msg)
                 return
 
@@ -250,12 +220,12 @@ class ReminderCog(commands.Cog):
         # チャンネルの設定(指定なしなら投稿されたチャンネル、指定があればそちらのチャンネルとする)
         channel_id = None
         if channel is not None:
-            temp_channel = discord.utils.get(ctx.guild.text_channels, name=channel)
+            temp_channel = discord.utils.get(interaction.guild.text_channels, name=channel)
             if channel.upper() == 'DM': # チャンネルが'DM'なら、ギルドとチャンネルをNoneとする
                 guild_id = None
                 if self.remind.saved_dm_guild is None:
                     msg = 'ギルドが何も登録されていない段階で、DMを登録することはできません。ギルドを登録してから再度リマインドの登録をしてください。'
-                    await ctx.send(msg, hidden = True)
+                    await interaction.response.send_message(msg, ephemeral=True)
                     LOG.info(msg)
                     return
 
@@ -265,7 +235,7 @@ class ReminderCog(commands.Cog):
                     channel_id = int(temp_channel_id)
                 else:
                     msg = 'チャンネル名が不正です。もう一度、適切な名前で登録してください(#チャンネル名でもOK)。'
-                    await ctx.send(msg, hidden = True)
+                    await interaction.response.send_message(msg, ephemeral=True)
                     LOG.info(msg)
                     return
             else:
@@ -276,14 +246,13 @@ class ReminderCog(commands.Cog):
                 channel_id = None
             # ギルドがあり、チャンネルが取得できるならそのチャンネルを使う
             else:
-                # sendが存在しない場合は、ボイスチャンネル内チャンネルだと想定しDMでダメですメッセージを送付
-                if not hasattr(ctx.channel, 'send'):
+                # sendが存在しない場合は、ボイスチャンネル内チャンネルと想定
+                if not hasattr(interaction.channel, 'send'):
                     msg = 'リマインド登録に失敗しました。ボイスチャンネル内のチャンネルは指定できません(DMで申し訳ないです)\n他のチャンネルで実行するか、オプションのchannel部分をボイスチャンネル以外で登録してください(#チャンネル名でもOK)'
-                    channel = await ctx.author.create_dm()
-                    await channel.send(msg)
+                    await interaction.response.send_message(msg, ephemeral=True)
                     LOG.info(msg)
                     return
-                channel_id = ctx.channel.id
+                channel_id = interaction.channel.id
 
         today = datetime.datetime.now(self.JST).date()
         # 4桁の数字がない場合、先頭に付けてみる
@@ -315,7 +284,7 @@ class ReminderCog(commands.Cog):
         else:
             error_message = '不正な時間のため、リマインドを登録できませんでした'
             LOG.info(error_message)
-            await ctx.send(error_message, hidden = True)
+            await interaction.response.send_message(error_message, ephemeral=True)
             return
 
         # リマインド日時への変換
@@ -327,7 +296,7 @@ class ReminderCog(commands.Cog):
             error_message = '不正な日時のため、リマインドを登録できませんでした'
             LOG.info(error_message)
             LOG.info(e)
-            await ctx.send(error_message, hidden = True)
+            await interaction.response.send_message(error_message, ephemeral=True)
             return
 
         status = self.remind.STATUS_PROGRESS
@@ -341,7 +310,7 @@ class ReminderCog(commands.Cog):
             if next_remind_datetime is None:
                 error_message = '繰り返し間隔が不正のため、リマインドを登録できませんでした'
                 LOG.info(error_message)
-                await ctx.send(error_message, hidden = True)
+                await interaction.response.send_message(error_message, ephemeral=True)
                 return
             repeat_flg  = '1'
 
@@ -349,63 +318,43 @@ class ReminderCog(commands.Cog):
 
         # 実際の処理(remind.pyでやる)
         try:
-            id = await self.remind.make(guild_id, ctx.author.id, remind_datetime, message, channel_id, status, repeat_flg,
+            await interaction.response.defer()
+            id = await self.remind.make(guild_id, interaction.user.id, remind_datetime, message, channel_id, status, repeat_flg,
                             repeat_interval, repeat_count, repeat_max_count)
         except:
             # 失敗した場合自分で最後のidを取得
             id = self.remind.get_last_id()
             LOG.warning('コマンドremind_make中に失敗(おそらく添付用チャンネルの作成、または、添付に失敗)')
 
-        hidden = True if reply_is_hidden == 'True' else False
-        await ctx.send(f'リマインドを登録しました(No.{id})', hidden = hidden)
+        await interaction.followup.send(f'リマインドを登録しました(No.{id})', ephemeral = hidden)
 
-    @cog_ext.cog_slash(
+    @app_commands.command(
         name='remind-cancel',
-        # guild_ids=guilds,
-        description='remindをキャンセルする',
-        options=[
-            manage_commands.create_option(name='cancel_no',
-                                        description='キャンセルするリマインドの番号(No)',
-                                        option_type=3,
-                                        required=True),
-            manage_commands.create_option(name='reply_is_hidden',
-                                        description='Botの実行結果を全員に見せるどうか(リマインド自体は普通です/他の人にもリマインドを使わせたい場合、全員に見せる方がオススメです))',
-                                        option_type=3,
-                                        required=False,
-                                        choices=[
-                                            manage_commands.create_choice(
-                                            name='自分のみ',
-                                            value='True'),
-                                            manage_commands.create_choice(
-                                            name='全員に見せる',
-                                            value='False')
-                                        ])
-        ])
+        description='remindをキャンセルする')
+    @app_commands.describe(
+        cancel_no='キャンセルするリマインドの番号(No)')
+    @app_commands.describe(
+        reply_is_hidden='Botの実行結果を全員に見せるどうか(リマインド自体は普通です/他の人にもリマインドを使わせたい場合、全員に見せる方がオススメです))')
     async def remind_cancel(self,
-                            ctx,
-                            cancel_no: str,
-                            reply_is_hidden: str = 'True'):
+                        interaction: discord.Interaction,
+                        cancel_no: app_commands.Range[int, 1, 999999999999],
+                        reply_is_hidden: Literal['自分のみ', '全員に見せる'] = SHOW_ME):
         LOG.info('remindをcancelするぜ！')
+        hidden = True if reply_is_hidden == self.SHOW_ME else False
         self.check_printer_is_running()
-
-        # チェック
-        if not cancel_no.isdecimal():
-            invalid_number_msg = '有効な数字ではありません'
-            await ctx.send(invalid_number_msg, hidden = True)
-            LOG.info(invalid_number_msg)
-            return
+        await interaction.response.defer()
 
         # コマンド実行者が指定したNoのリマインドを持っているかチェック
         id = int(cancel_no)
-        row = self.remind.get(ctx, id)
+        row = self.remind.get(interaction, id)
         if row is None:
             cancel_id_is_none_msg = 'リマインドをキャンセルできませんでした(Noが違う可能性があります)'
-            await ctx.send(cancel_id_is_none_msg, hidden = True)
+            await interaction.followup.send(cancel_id_is_none_msg, ephemeral=True)
             LOG.info(cancel_id_is_none_msg)
             return
 
         # 添付する際にギルドIDが必要なので準備する(DMの場合はNone(デフォルトのギルドへ登録する))
-        guild_id = ctx.guild.id if ctx.guild is not None else None
+        guild_id = interaction.guild.id if interaction.guild is not None else None
 
         # リマインドをキャンセル
         try:
@@ -414,188 +363,113 @@ class ReminderCog(commands.Cog):
             LOG.warning('コマンドremind_cancel中に失敗(おそらく添付用チャンネルの作成、または、添付に失敗)')
         cancel_msg = f'リマインドをキャンセルしました(No.{cancel_no})'
 
-        hidden = True if reply_is_hidden == 'True' else False
-        await ctx.send(cancel_msg, hidden = hidden)
+        await interaction.followup.send(cancel_msg, ephemeral = hidden)
         LOG.info(cancel_msg)
 
-    @cog_ext.cog_slash(
+    @app_commands.command(
         name='remind-list',
-        # guild_ids=guilds,
-        description='remindを確認する',
-        options=[
-            manage_commands.create_option(name='status',
-                                        description='リマインドリストで表示させるステータス',
-                                        option_type=3,
-                                        required=False,
-                                        choices=[
-                                            manage_commands.create_choice(
-                                            name='実行予定のリマインドリスト(デフォルト)',
-                                            value='Progress'),
-                                            manage_commands.create_choice(
-                                            name='キャンセルしたリマインドリスト',
-                                            value='Canceled'),
-                                            manage_commands.create_choice(
-                                            name='終了したリマインドリスト',
-                                            value='Finished')
-                                        ]),
-            manage_commands.create_option(name='reply_is_hidden',
-                                        description='Botの実行結果を全員に見せるどうか(リマインド自体は普通です/他の人にもリマインドを使わせたい場合、全員に見せる方がオススメです))',
-                                        option_type=3,
-                                        required=False,
-                                        choices=[
-                                            manage_commands.create_choice(
-                                            name='自分のみ',
-                                            value='True'),
-                                            manage_commands.create_choice(
-                                            name='全員に見せる',
-                                            value='False')
-                                        ])
-        ])
-    async def remind_list(self, ctx, status: str = 'Progress', reply_is_hidden: str = 'True'):
+        description='remindを確認する')
+    @app_commands.describe(
+        status='リマインドリストで表示させるステータス')
+    @app_commands.describe(
+        reply_is_hidden='Botの実行結果を全員に見せるどうか(リマインド自体は普通です/他の人にもリマインドを使わせたい場合、全員に見せる方がオススメです))')
+    async def remind_list(self,
+                        interaction: discord.Interaction,
+                        status: Literal['実行予定のリマインドリスト(デフォルト)', 'キャンセルしたリマインドリスト', '終了したリマインドリスト'] = '実行予定のリマインドリスト(デフォルト)',
+                        reply_is_hidden: Literal['自分のみ', '全員に見せる'] = SHOW_ME):
         LOG.info('remindをlistするぜ！')
+        hidden = True if reply_is_hidden == self.SHOW_ME else False
+        command_status = self.get_command_status(status)
         self.check_printer_is_running()
 
-        rows = self.remind.list(ctx, status)
-        hidden = True if reply_is_hidden == 'True' else False
-        await ctx.send(rows, hidden = hidden)
+        rows = self.remind.list(interaction, command_status)
+        await interaction.response.send_message(rows, ephemeral = hidden)
 
-    @commands.guild_only()
-    @commands.has_guild_permissions(administrator=True)
-    @cog_ext.cog_slash(
+    @app_commands.command(
         name='remind-list-guild-all',
-        # guild_ids=guilds,
-        description='<注意>ギルドのremindをぜんぶ確認する(administrator権限保持者のみ実行可能です！)',
-        options=[
-            manage_commands.create_option(name='status',
-                                        description='リマインドリストで表示させるステータス',
-                                        option_type=3,
-                                        required=False,
-                                        choices=[
-                                            manage_commands.create_choice(
-                                            name='実行予定のリマインドリスト',
-                                            value='Progress'),
-                                            manage_commands.create_choice(
-                                            name='キャンセルしたリマインドリスト',
-                                            value='Canceled'),
-                                            manage_commands.create_choice(
-                                            name='終了したリマインドリスト',
-                                            value='Finished')
-                                        ]),
-            manage_commands.create_option(name='reply_is_hidden',
-                                        description='Botの実行結果を全員に見せるどうか(リマインド自体は普通です/他の人にもリマインドを使わせたい場合、全員に見せる方がオススメです))',
-                                        option_type=3,
-                                        required=False,
-                                        choices=[
-                                            manage_commands.create_choice(
-                                            name='自分のみ',
-                                            value='True'),
-                                            manage_commands.create_choice(
-                                            name='全員に見せる',
-                                            value='False')
-                                        ])
-        ])
-    async def _remind_list_guild_all(self, ctx, reply_is_hidden: str = 'True', status: str = None):
+        description='<注意>ギルドのremindをぜんぶ確認する(administrator権限保持者のみ実行可能です！)')
+    @app_commands.describe(
+        status='リマインドリストで表示させるステータス')
+    @app_commands.describe(
+        reply_is_hidden='Botの実行結果を全員に見せるどうか(リマインド自体は普通です/他の人にもリマインドを使わせたい場合、全員に見せる方がオススメです))')
+    @app_commands.guild_only()
+    @app_commands.default_permissions(administrator=True)
+    @app_commands.checks.has_permissions(administrator=True)
+    async def _remind_list_guild_all(self,
+                                    interaction: discord.Interaction,
+                                    status: Literal['実行予定のリマインドリスト(デフォルト)', 'キャンセルしたリマインドリスト', '終了したリマインドリスト'] = '実行予定のリマインドリスト(デフォルト)',
+                                    reply_is_hidden: Literal['自分のみ', '全員に見せる'] = SHOW_ME):
         LOG.info('remindをlist(guild)するぜ！')
+        command_status = self.get_command_status(status)
+        hidden = True if reply_is_hidden == self.SHOW_ME else False
+        await interaction.response.defer()
         self.check_printer_is_running()
 
-        rows = self.remind.list_all_guild(ctx, status)
-        hidden = True if reply_is_hidden == 'True' else False
-        await ctx.send(rows, hidden = hidden)
+        rows = self.remind.list_all_guild(interaction, command_status)
+        await interaction.followup.send(rows, ephemeral = hidden)
 
-    @commands.dm_only()
-    @commands.is_owner()
-    @cog_ext.cog_slash(
+    def check_on_dm(interaction: discord.Interaction) -> bool:
+        return interaction.guild is None
+
+    @app_commands.command(
         name='remind-list-all',
-        description='<注意>remindをぜんぶ確認する(BotのオーナーのみDMで実行可能です！)',
-        options=[
-            manage_commands.create_option(name='status',
-                                        description='リマインドリストで表示させるステータス',
-                                        option_type=3,
-                                        required=False,
-                                        choices=[
-                                            manage_commands.create_choice(
-                                            name='実行予定のリマインドリスト',
-                                            value='Progress'),
-                                            manage_commands.create_choice(
-                                            name='キャンセルしたリマインドリスト',
-                                            value='Canceled'),
-                                            manage_commands.create_choice(
-                                            name='終了したリマインドリスト',
-                                            value='Finished')
-                                        ]),
-            manage_commands.create_option(name='reply_is_hidden',
-                                        description='Botの実行結果を全員に見せるどうか(リマインド自体は普通です/他の人にもリマインド使わせたい場合、全員に見せる方がオススメです))',
-                                        option_type=3,
-                                        required=False,
-                                        choices=[
-                                            manage_commands.create_choice(
-                                            name='自分のみ',
-                                            value='True'),
-                                            manage_commands.create_choice(
-                                            name='全員に見せる',
-                                            value='False')
-                                        ])
-        ])
-    async def _remind_list_all(self, ctx, reply_is_hidden: str = 'True', status: str = None):
+        description='<注意>remindをぜんぶ確認する(BotのオーナーのみDMで実行可能です！)')
+    @app_commands.describe(
+        status='リマインドリストで表示させるステータス')
+    @app_commands.describe(
+        reply_is_hidden='Botの実行結果を全員に見せるどうか(リマインド自体は普通です/他の人にもリマインドを使わせたい場合、全員に見せる方がオススメです))')
+    @app_commands.check(check_on_dm)
+    async def _remind_list_all(self,
+                            interaction: discord.Interaction,
+                            status: Literal['実行予定のリマインドリスト(デフォルト)', 'キャンセルしたリマインドリスト', '終了したリマインドリスト'] = '実行予定のリマインドリスト(デフォルト)',
+                            reply_is_hidden: Literal['自分のみ', '全員に見せる'] = SHOW_ME):
+        if interaction.user != self.info.owner:
+            await interaction.response.send_message('このコマンドはBotのオーナー以外は実行できません', ephemeral = True)
+            return
         LOG.info('remindをlist(owner)するぜ！')
+        command_status = self.get_command_status(status)
+        hidden = True if reply_is_hidden == self.SHOW_ME else False
+        await interaction.response.defer()
         self.check_printer_is_running()
 
-        rows = self.remind.list_all(ctx, status)
-        hidden = True if reply_is_hidden == 'True' else False
-        await ctx.send(rows, hidden = hidden)
+        rows = self.remind.list_all(interaction, command_status)
+        await interaction.followup.send(rows, ephemeral = hidden)
 
-    @cog_ext.cog_slash(
+    @app_commands.command(
         name='remind-task-check',
-        description='remindのTaskを確認する(リマインドが発動しない場合に実行してください)',
-        options=[
-            manage_commands.create_option(name='reply_is_hidden',
-                                        description='Botの実行結果を全員に見せるどうか',
-                                        option_type=3,
-                                        required=False,
-                                        choices=[
-                                            manage_commands.create_choice(
-                                            name='自分のみ',
-                                            value='True'),
-                                            manage_commands.create_choice(
-                                            name='全員に見せる',
-                                            value='False')
-                                        ])
-        ])
-    async def _remind_task_check(self, ctx, reply_is_hidden: str = 'True'):
+        description='remindのTaskを確認する(リマインドが発動しない場合に実行してください)')
+    @app_commands.describe(
+        reply_is_hidden='Botの実行結果を全員に見せるどうか(リマインド自体は普通です/他の人にもリマインドを使わせたい場合、全員に見せる方がオススメです))')
+    async def _remind_task_check(self,
+                                interaction: discord.Interaction,
+                                reply_is_hidden: Literal['自分のみ', '全員に見せる'] = SHOW_ME):
         LOG.info('remindのTaskを確認するぜ！')
+        hidden = True if reply_is_hidden == self.SHOW_ME else False
+        await interaction.response.defer()
         self.check_printer_is_running()
 
         msg = 'Taskは問題なく起動しています。'
         self.check_printer_is_running()
-        hidden = True if reply_is_hidden == 'True' else False
-        await ctx.send(msg, hidden = hidden)
+        await interaction.followup.send(msg, ephemeral = hidden)
 
-    @commands.is_owner()
-    @cog_ext.cog_slash(
+    @app_commands.command(
         name='delete-old-data',
-        description='<注意>完了したremindをぜんぶ削除する(BotのオーナーのみDMで実行可能です！)',
-        # guild_ids=guilds,
-        options=[
-            manage_commands.create_option(name='reply_is_hidden',
-                                        description='Botの実行結果を全員に見せるどうか(リマインド自体は普通です/他の人にもリマインド使わせたい場合、全員に見せる方がオススメです))',
-                                        option_type=3,
-                                        required=False,
-                                        choices=[
-                                            manage_commands.create_choice(
-                                            name='自分のみ',
-                                            value='True'),
-                                            manage_commands.create_choice(
-                                            name='全員に見せる',
-                                            value='False')
-                                        ])
-        ])
-    async def _delete_old_data(self, ctx, reply_is_hidden: str = 'True'):
+        description='<注意>完了したremindをぜんぶ削除する(BotのオーナーのみDMで実行可能です！)')
+    @app_commands.describe(
+        reply_is_hidden='Botの実行結果を全員に見せるどうか(リマインド自体は普通です/他の人にもリマインドを使わせたい場合、全員に見せる方がオススメです))')
+    async def _delete_old_data(self,
+                            interaction: discord.Interaction,
+                            reply_is_hidden: Literal['自分のみ', '全員に見せる'] = SHOW_ME):
+        if interaction.user != self.info.owner:
+            await interaction.response.send_message('このコマンドはBotのオーナー以外は実行できません', ephemeral = True)
+            return
         LOG.info('remindをdelete(owner)するぜ！')
+        hidden = True if reply_is_hidden == self.SHOW_ME else False
+        await interaction.response.defer()
         self.check_printer_is_running()
 
-        await self.remind.delete_old_reminder(ctx)
-        hidden = True if reply_is_hidden == 'True' else False
-        await ctx.send('ステータスが完了のリマインドを全て削除しました', hidden = hidden)
+        await self.remind.delete_old_reminder(interaction)
+        await interaction.followup.send('ステータスが完了のリマインドを全て削除しました', ephemeral = hidden)
 
     def calc_next_reminder_date(self, remind_datetime, repeat_interval):
         re_minutes = r'([0-9]*)mi$'
@@ -718,31 +592,41 @@ class ReminderCog(commands.Cog):
             LOG.info(msg)
             self.printer.start()
 
-    @commands.Cog.listener()
-    async def on_slash_command_error(self, ctx, ex):
+    def get_command_status(self, status):
+        command_status = self.remind.STATUS_PROGRESS
+        if status == 'キャンセルしたリマインドリスト':
+            command_status = self.remind.STATUS_CANCELED
+        elif status == '終了したリマインドリスト':
+            command_status = self.remind.STATUS_FINISHED
+        return command_status
+
+    async def cog_app_command_error(self, interaction, error):
         '''
         slash_commandでエラーが発生した場合の動く処理
         '''
-        try:
-            LOG.error(ex)
-            raise ex
-        except discord.ext.commands.PrivateMessageOnly:
-            await ctx.send(f'エラーが発生しました(DM(ダイレクトメッセージ)でのみ実行できます)', hidden = True)
-        except discord.ext.commands.NoPrivateMessage:
-            await ctx.send(f'エラーが発生しました(ギルドでのみ実行できます(DMやグループチャットでは実行できません))', hidden = True)
-        except discord.ext.commands.NotOwner:
-            await ctx.send(f'エラーが発生しました(Botのオーナーのみ実行できます)', hidden = True)
-        except discord.ext.commands.MissingPermissions:
-            if ex.missing_perms[0] == 'administrator':
-                await ctx.send(f'エラーが発生しました(ギルドの管理者のみ実行できます)', hidden = True)
+        LOG.error(error)
+        if isinstance(error, app_commands.CheckFailure):
+            if interaction.command.name == 'remind-list-all':
+                await interaction.response.send_message(f'エラーが発生しました(DM(ダイレクトメッセージ)でのみ実行できます)', ephemeral=True)
             else:
-                await ctx.send(f'エラーが発生しました(権限が足りません)', hidden = True)
-        except discord.errors.Forbidden:
-            await ctx.send(f'エラーが発生しました(権限が足りません(おそらくBotが表示/編集できない))', hidden = True)
-        except:
-            await ctx.send(f'エラーが発生しました({ex})', hidden = True)
+                await interaction.response.send_message(f'エラーが発生しました(コマンドが実行できません)', ephemeral=True)
+        elif isinstance(error, discord.ext.commands.PrivateMessageOnly):
+            await interaction.response.send_message(f'エラーが発生しました(DM(ダイレクトメッセージ)でのみ実行できます)', ephemeral=True)
+        elif isinstance(error, app_commands.NoPrivateMessage):
+            await interaction.response.send_message(f'エラーが発生しました(ギルドでのみ実行できます(DMやグループチャットでは実行できません))', ephemeral=True)
+        elif isinstance(error, discord.ext.commands.NotOwner):
+            await interaction.response.send_message(f'エラーが発生しました(Botのオーナーのみ実行できます)', ephemeral=True)
+        elif isinstance(error, app_commands.MissingPermissions):
+            if error.missing_perms[0] == 'administrator':
+                await interaction.response.send_message(f'エラーが発生しました(ギルドの管理者のみ実行できます)', ephemeral=True)
+            else:
+                await interaction.response.send_message(f'エラーが発生しました(権限が足りません)', ephemeral=True)
+        elif isinstance(error, discord.errors.Forbidden):
+            await interaction.response.send_message(f'エラーが発生しました(権限が足りません(おそらくBotが表示/編集できない))', ephemeral=True)
+        else:
+            await interaction.response.send_message(f'エラーが発生しました({error})', ephemeral=True)
 
 # Bot本体側からコグを読み込む際に呼び出される関数。
-def setup(bot):
+async def setup(bot):
     LOG.info('DiscordReminderBotを読み込む！')
-    bot.add_cog(ReminderCog(bot))  # ReminderCogにBotを渡してインスタンス化し、Botにコグとして登録する。
+    await bot.add_cog(ReminderCog(bot))  # ReminderCogにBotを渡してインスタンス化し、Botにコグとして登録する。

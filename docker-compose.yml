@@ -10,10 +10,11 @@ services:
       # docker-compose.override.ymlで上書き定義することを推奨
       - DISCORD_TOKEN=__ここにDiscordのトークンを書き込む__
       - LOG_LEVEL=INFO
-      - ENABLE_SLASH_COMMAND_GUILD_ID_LIST= __あなたのGuild_IDを入力(数字/複数あるなら;を挟むこと。グローバルコマンドの場合は入力しないこと！(その場合1時間程度登録に時間がかかる可能性があります))__
+      - ENABLE_SLASH_COMMAND_GUILD_ID = "__あなたのGuild_IDを入力(数字/複数あるなら;を挟むこと。グローバルコマンドの場合は入力しないこと！(その場合1時間程度登録に時間がかかる可能性があります))__"
       - KEEP_DECRYPTED_FILE=FALSE
       - IS_HEROKU=FALSE
       - IS_REPLIT=FALSE
       - RESTRICT_ATTACHMENT_FILE=FALSE
       - PRIORITY_GUILD=__あなたのGuild_IDを入力(数字)__
       - REMIND_CONTROL_CHANNEL_NAME=remind_control_channel
+      - APPLICATION_ID = "99999999"

@@ -3,7 +3,7 @@ from discord.ext import commands
 from os.path import join, dirname
 from logging import getLogger
 from .aes_angou import Aes_angou
-from . import setting
+from . import settings
 
 import datetime, discord, sqlite3, os
 LOG = getLogger('reminderbot')
@@ -17,8 +17,8 @@ class Remind:
     STATUS_ERROR = 'Error'
     JST = timezone(timedelta(hours=+9), 'JST')
     # 環境変数REMIND_CONTROL_CHANNELにあれば、リマインドの管理先としてそちらの名前を使う(複数のリマインダーBotがあって競合するときに使用)
-    if setting.REMIND_CONTROL_CHANNEL_NAME:
-        REMIND_CONTROL_CHANNEL = setting.REMIND_CONTROL_CHANNEL_NAME
+    if settings.REMIND_CONTROL_CHANNEL_NAME:
+        REMIND_CONTROL_CHANNEL = settings.REMIND_CONTROL_CHANNEL_NAME
     else:
         REMIND_CONTROL_CHANNEL = 'remind_control_channel'
 
@@ -31,7 +31,7 @@ class Remind:
         self.repeat = False  # 繰り返しするかどうか
         self.repeat_interval = None
         self.remind_rows = None  # リマインドの結果
-        self.aes = Aes_angou(setting.DISCORD_TOKEN)
+        self.aes = Aes_angou(settings.DISCORD_TOKEN)
         self.saved_dm_guild = None
 
     async def prepare(self, guild):
@@ -73,14 +73,14 @@ class Remind:
 
     async def get_discord_attachment_file(self):
         # HerokuかRepl.itの時のみ実施
-        if setting.IS_HEROKU or setting.IS_REPLIT:
+        if settings.IS_HEROKU or settings.IS_REPLIT:
             # 環境変数によって、添付ファイルのファイル名を変更する
-            file_name = self.aes.ENC_FILE if setting.KEEP_DECRYPTED_FILE else self.DATABASE
+            file_name = self.aes.ENC_FILE if settings.KEEP_DECRYPTED_FILE else self.DATABASE
             LOG.debug('Heroku mode.start get_discord_attachment_file.')
             # ファイルをチェックし、存在しなければ最初と見做す
             file_path_first_time = join(dirname(__file__), 'files' + os.sep + 'first_time')
-            if (setting.IS_HEROKU and not os.path.exists(file_path_first_time)) or setting.IS_REPLIT:
-                if setting.IS_HEROKU:
+            if (settings.IS_HEROKU and not os.path.exists(file_path_first_time)) or settings.IS_REPLIT:
+                if settings.IS_HEROKU:
                     with open(file_path_first_time, 'w') as f:
                         now = datetime.datetime.now(self.JST)
                         f.write(now.strftime('%Y/%m/%d(%a) %H:%M:%S'))
@@ -93,8 +93,10 @@ class Remind:
                     LOG.debug(f'{guild}: チャンネル読み込み')
                     get_control_channel = discord.utils.get(guild.text_channels, name=self.REMIND_CONTROL_CHANNEL)
                     if get_control_channel is not None:
+                        messages = []
                         try:
-                            messages = await get_control_channel.history(limit=20).flatten()
+                            async for hist_messages in get_control_channel.history(limit=20):
+                                messages.append(hist_messages)
                         except discord.errors.Forbidden:
                             msg = f'＊＊＊{guild}のチャンネル({self.REMIND_CONTROL_CHANNEL})読み込みに失敗しました！＊＊＊'
                             LOG.error(msg)
@@ -102,7 +104,7 @@ class Remind:
 
                         for message in messages:
                             # 添付ファイルの読み込みを自分の投稿のみに制限する(環境変数で指定された場合のみ)
-                            if setting.RESTRICT_ATTACHMENT_FILE and  message.author != guild.me:
+                            if settings.RESTRICT_ATTACHMENT_FILE and  message.author != guild.me:
                                 continue
                             LOG.debug(f'con: {message.content}, attchSize:{len(message.attachments)}')
                             # message_created_at_jst = datetime.datetime(message.created_at, tzinfo=self.JST)
@@ -130,9 +132,9 @@ class Remind:
 
     async def set_discord_attachment_file(self, guild):
         # HerokuかRepl.itの時のみ実施
-        if setting.IS_HEROKU or setting.IS_REPLIT:
+        if settings.IS_HEROKU or settings.IS_REPLIT:
             # 環境変数によって、添付ファイルのファイル名を変更する
-            file_name = self.aes.ENC_FILE if setting.KEEP_DECRYPTED_FILE else self.DATABASE
+            file_name = self.aes.ENC_FILE if settings.KEEP_DECRYPTED_FILE else self.DATABASE
             LOG.debug('Heroku mode.start set_discord_attachment_file.')
 
             # チャンネルをチェック(チャンネルが存在しない場合は勝手に作成する)
@@ -165,17 +167,20 @@ class Remind:
                     return
 
             # チャンネルの最後のメッセージを確認し、所定のメッセージなら削除する
+            last_message = None
             try:
-                last_message = await get_control_channel.history(limit=1).flatten()
+                async for hist_messages in get_control_channel.history(limit=1):
+                    last_message = hist_messages
             except discord.errors.Forbidden:
                 # エラーが発生したら、適当に対応
                 msg = f'＊＊＊{guild}のチャンネル({self.REMIND_CONTROL_CHANNEL})読み込みに失敗しました！＊＊＊'
                 LOG.error(msg)
                 guild = discord.utils.get(self.bot.guilds, id=self.saved_dm_guild)
                 get_control_channel = discord.utils.get(guild.text_channels, name=self.REMIND_CONTROL_CHANNEL)
-                last_message = await get_control_channel.history(limit=1).flatten()
-            if len(last_message) != 0:
-                if last_message[0].content == file_name:
+                async for hist_messages in get_control_channel.history(limit=1):
+                    last_message = hist_messages
+            if last_message is not None:
+                if last_message.content == file_name:
                     await get_control_channel.purge(limit=1)
 
             # チャンネルにファイルを添付する
@@ -193,7 +198,7 @@ class Remind:
     def encode(self):
         if os.path.exists(self.aes.DEC_FILE_PATH):
             self.aes.encode()
-            if setting.KEEP_DECRYPTED_FILE:
+            if settings.KEEP_DECRYPTED_FILE:
                 os.remove(self.aes.DEC_FILE_PATH)
 
     def read(self):
@@ -284,15 +289,15 @@ class Remind:
             guild = discord.utils.get(self.bot.guilds, id=self.saved_dm_guild)
             await self.set_discord_attachment_file(guild)
 
-    def list(self, ctx: commands.Context, status: str = 'Progress'):
+    def list(self, interaction: discord.Interaction, status: str = 'Progress'):
         self.decode()
         conn = sqlite3.connect(self.FILE_PATH)
         with conn:
             cur = conn.cursor()
-            if ctx.guild is None:
-                select_sql = f'''select * from reminder_table where status = '{status}' and member = '{ctx.author.id}' '''
+            if interaction.guild is None:
+                select_sql = f'''select * from reminder_table where status = '{status}' and member = '{interaction.user.id}' '''
             else:
-                select_sql = f'''select * from reminder_table where status = '{status}' and guild = '{ctx.guild.id}' and member = '{ctx.author.id}' '''
+                select_sql = f'''select * from reminder_table where status = '{status}' and guild = '{interaction.guild.id}' and member = '{interaction.user.id}' '''
 
             if status == self.STATUS_PROGRESS:
                 select_sql += '''order by remind_datetime'''
@@ -309,13 +314,13 @@ class Remind:
         chopped_escaped_mention_text = escaped_mention_text[:1900] + ('...(省略)...' if escaped_mention_text[1900:] else '')
         return chopped_escaped_mention_text
 
-    def list_all_guild(self, ctx: commands.Context, status: str = None):
-        return self._list_all_func(ctx, True, status)
+    def list_all_guild(self, interaction: discord.Interaction, status: str = None):
+        return self._list_all_func(interaction, True, status)
 
-    def list_all(self, ctx: commands.Context, status: str = None):
-        return self._list_all_func(ctx, False, status)
+    def list_all(self, interaction: discord.Interaction, status: str = None):
+        return self._list_all_func(interaction, False, status)
 
-    def _list_all_func(self, ctx: commands.Context, is_guild: bool, status: str = None):
+    def _list_all_func(self, interaction: discord.Interaction, is_guild: bool, status: str = None):
         self.decode()
         conn = sqlite3.connect(self.FILE_PATH)
         with conn:
@@ -323,7 +328,7 @@ class Remind:
 
             select_sql = 'select * from reminder_table '
             if is_guild:
-                select_sql += f'''where guild = '{ctx.guild.id}' '''
+                select_sql += f'''where guild = '{interaction.guild.id}' '''
             if status:
                 if is_guild:
                     select_sql += f'''and status = '{status}' '''
@@ -358,12 +363,12 @@ class Remind:
             message += f'Status: {row[6]} {repeat_message} 通知先: {channel}\n--\n'
         return message
 
-    def get(self, ctx: commands.Context, id: int):
+    def get(self, interaction: discord.Interaction, id: int):
         self.decode()
         conn = sqlite3.connect(self.FILE_PATH)
         with conn:
             cur = conn.cursor()
-            select_sql = f'''select * from reminder_table where status = '{self.STATUS_PROGRESS}' and member = '{ctx.author.id}' and id = '{id}' '''
+            select_sql = f'''select * from reminder_table where status = '{self.STATUS_PROGRESS}' and member = '{interaction.user.id}' and id = '{id}' '''
             LOG.debug(select_sql)
             cur.execute(select_sql)
             row = cur.fetchone()
@@ -372,7 +377,7 @@ class Remind:
         self.encode()
         return row
 
-    async def delete_old_reminder(self, ctx: commands.Context):
+    async def delete_old_reminder(self, interaction: discord.Interaction):
         self.decode()
         conn = sqlite3.connect(self.FILE_PATH)
         with conn:
@@ -385,7 +390,7 @@ class Remind:
             cur.execute('vacuum')
         self.read()
         self.encode()
-        guild = ctx.guild
+        guild = interaction.guild
         if guild is None:
             guild = self.saved_dm_guild
         # Herokuの時のみ、チャンネルにファイルを添付する
