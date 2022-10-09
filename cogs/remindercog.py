@@ -318,7 +318,7 @@ class ReminderCog(commands.Cog):
 
         # 実際の処理(remind.pyでやる)
         try:
-            await interaction.response.defer()
+            await interaction.response.defer(ephemeral = hidden)
             id = await self.remind.make(guild_id, interaction.user.id, remind_datetime, message, channel_id, status, repeat_flg,
                             repeat_interval, repeat_count, repeat_max_count)
         except:
@@ -342,7 +342,7 @@ class ReminderCog(commands.Cog):
         LOG.info('remindをcancelするぜ！')
         hidden = True if reply_is_hidden == self.SHOW_ME else False
         self.check_printer_is_running()
-        await interaction.response.defer()
+        await interaction.response.defer(ephemeral = hidden)
 
         # コマンド実行者が指定したNoのリマインドを持っているかチェック
         id = int(cancel_no)
@@ -379,11 +379,12 @@ class ReminderCog(commands.Cog):
                         reply_is_hidden: Literal['自分のみ', '全員に見せる'] = SHOW_ME):
         LOG.info('remindをlistするぜ！')
         hidden = True if reply_is_hidden == self.SHOW_ME else False
+        await interaction.response.defer(ephemeral = hidden)
         command_status = self.get_command_status(status)
         self.check_printer_is_running()
 
         rows = self.remind.list(interaction, command_status)
-        await interaction.response.send_message(rows, ephemeral = hidden)
+        await interaction.followup.send(rows, ephemeral = hidden)
 
     @app_commands.command(
         name='remind-list-guild-all',
@@ -402,7 +403,7 @@ class ReminderCog(commands.Cog):
         LOG.info('remindをlist(guild)するぜ！')
         command_status = self.get_command_status(status)
         hidden = True if reply_is_hidden == self.SHOW_ME else False
-        await interaction.response.defer()
+        await interaction.response.defer(ephemeral = hidden)
         self.check_printer_is_running()
 
         rows = self.remind.list_all_guild(interaction, command_status)
@@ -429,7 +430,7 @@ class ReminderCog(commands.Cog):
         LOG.info('remindをlist(owner)するぜ！')
         command_status = self.get_command_status(status)
         hidden = True if reply_is_hidden == self.SHOW_ME else False
-        await interaction.response.defer()
+        await interaction.response.defer(ephemeral = hidden)
         self.check_printer_is_running()
 
         rows = self.remind.list_all(interaction, command_status)
@@ -445,7 +446,7 @@ class ReminderCog(commands.Cog):
                                 reply_is_hidden: Literal['自分のみ', '全員に見せる'] = SHOW_ME):
         LOG.info('remindのTaskを確認するぜ！')
         hidden = True if reply_is_hidden == self.SHOW_ME else False
-        await interaction.response.defer()
+        await interaction.response.defer(ephemeral = hidden)
         self.check_printer_is_running()
 
         msg = 'Taskは問題なく起動しています。'
@@ -465,7 +466,7 @@ class ReminderCog(commands.Cog):
             return
         LOG.info('remindをdelete(owner)するぜ！')
         hidden = True if reply_is_hidden == self.SHOW_ME else False
-        await interaction.response.defer()
+        await interaction.response.defer(ephemeral = hidden)
         self.check_printer_is_running()
 
         await self.remind.delete_old_reminder(interaction)
