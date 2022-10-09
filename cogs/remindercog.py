@@ -55,6 +55,8 @@ class ReminderCog(commands.Cog):
                                                     yearfirst=True)
             if remind_datetime <= now:
                 # リマインドを発動
+                # メッセージ作成
+                msg = re.sub(r'<br>|[\[\(【<]改行[\)\]」】>]|@{3}', '\n', remind[5])
                 # DMの対応
                 if remind[2] is None:
                     remind_user = self.bot.get_user(remind[3])
@@ -65,7 +67,7 @@ class ReminderCog(commands.Cog):
                         text = remind_user or ''
                     channel = await remind_user.create_dm()
                     try:
-                        remind_msg = await channel.send(remind[5])
+                        remind_msg = await channel.send(msg)
                     except discord.errors.Forbidden:
                         msg = f'＊＊＊{remind[2]}のDMへの投稿に失敗しました！＊＊＊'
                         LOG.error(msg)
@@ -91,7 +93,7 @@ class ReminderCog(commands.Cog):
                                                 id=remind[4])
                     if channel is not None:
                         try:
-                            remind_msg = await channel.send(remind[5])
+                            remind_msg = await channel.send(msg)
                         except:
                             msg = f'＊＊＊{remind[2]}のチャンネルへの投稿に失敗しました！＊＊＊'
                             LOG.error(msg)
@@ -186,7 +188,7 @@ class ReminderCog(commands.Cog):
                                         option_type=3,
                                         required=True),
             manage_commands.create_option(name='message',
-                                        description='メッセージ(メンションしたい場合、通常のメッセージのように @xxxx を書いてください)',
+                                        description='メッセージ(<br>か@@@などで改行。メンションは通常のメッセージのように @xxxx と書く)',
                                         option_type=3,
                                         required=True),
             manage_commands.create_option(name='repeat_interval',
