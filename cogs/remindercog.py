@@ -192,7 +192,7 @@ class ReminderCog(commands.Cog):
                                         option_type=3,
                                         required=True),
             manage_commands.create_option(name='repeat_interval',
-                                        description='繰り返し間隔(数字に右の英字を付与：分(mi)/時間(h)/日(d)/週(w)/月(m)/年(y)か、特殊(平日/休日/月初/月末/曜日の文字列(「月水」のような)))',
+                                        description='繰り返し間隔(数字+英字を付与：分(mi)/時間(h)/日(d)/週(w)/月(m)/年(y)か、特殊(平日/休日/月初/月末/曜日文字列(「月水」など)))',
                                         option_type=3,
                                         required=False),
             manage_commands.create_option(name='repeat_max_count',
