@@ -32,5 +32,5 @@ class Aes_angou:
             cipher = AES.new(secret_key, AES.MODE_EAX, nonce)
             data = cipher.decrypt_and_verify(ciphertext, tag)
 
-            with  open(self.DEC_FILE_PATH, 'wb') as dec_file: 
+            with  open(self.DEC_FILE_PATH, 'wb') as dec_file:
                 dec_file.write(data)
