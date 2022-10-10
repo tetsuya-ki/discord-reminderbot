@@ -60,13 +60,7 @@ class ReminderCog(commands.Cog):
                 msg = re.sub(r'<br>|[\[\(【<]改行[\)\]」】>]|@{3}', '\n', remind[5])
                 # DMの対応
                 if remind[2] is None:
-                    remind_user = self.bot.get_user(remind[3])
-                    text = remind_user or ''
-                    LOG.debug('user id :' + str(remind[3]) + ', user:'+ text)
-                    if remind_user is None:
-                        remind_user = await self.bot.fetch_user(remind[3])
-                        text = remind_user or ''
-                    channel = await remind_user.create_dm()
+                    channel = await self.create_dm(remind[3])
                     try:
                         remind_msg = await channel.send(msg)
                     except discord.errors.Forbidden:
@@ -89,9 +83,7 @@ class ReminderCog(commands.Cog):
                             LOG.error(msg)
                             continue
                 else:
-                    channel = discord.utils.get(self.bot.get_all_channels(),
-                                                guild__id=remind[2],
-                                                id=remind[4])
+                    channel = discord.utils.get(self.bot.get_all_channels(), guild__id=remind[2], id=remind[4])
                     if channel is not None:
                         try:
                             remind_msg = await channel.send(msg)
@@ -204,6 +196,7 @@ class ReminderCog(commands.Cog):
         LOG.info('remindをmakeするぜ！')
         hidden = True if reply_is_hidden == self.SHOW_ME else False
         self.check_printer_is_running()
+        await interaction.response.defer(ephemeral = hidden)
 
         # ギルドの設定
         if interaction.guild is not None:
@@ -211,7 +204,7 @@ class ReminderCog(commands.Cog):
         else:
             if channel is not None and channel.upper() != 'DM':
                 msg = 'DMでチャンネル指定はできません。チャンネルは未指定でリマインドを登録ください。'
-                await interaction.response.send_message(msg, ephemeral=True)
+                await interaction.followup.send(msg, ephemeral=True)
                 LOG.info(msg)
                 return
 
@@ -225,8 +218,18 @@ class ReminderCog(commands.Cog):
                 guild_id = None
                 if self.remind.saved_dm_guild is None:
                     msg = 'ギルドが何も登録されていない段階で、DMを登録することはできません。ギルドを登録してから再度リマインドの登録をしてください。'
-                    await interaction.response.send_message(msg, ephemeral=True)
+                    await interaction.followup.send(msg, ephemeral=True)
                     LOG.info(msg)
+                    return
+                # DMのチェック(BotとのDMでリマインド作成していない場合は、送信できるか不確定のため)
+                dm_channel = await self.create_dm(interaction.user.id)
+                try:
+                    # await dm_channel.typing() # typingで送信できるかチェックできたら嬉しかったけれど、これじゃチェックできなかった...
+                    await dm_channel.send(content='リマインドできるか事前チェックです...。数秒後に消えます', delete_after=3) # 実際に送信してみて、DMできるかチェックする
+                except:
+                    msg = 'リマインド登録に失敗しました。DM(ダイレクトメッセージ)できません。\nこのBotのあるサーバーの「プライバシー設定」で「サーバーにいるメンバーからのダイレクトメッセージを許可する」をONにしてください。」'
+                    await interaction.followup.send(msg, ephemeral=True)
+                    LOG.error(msg)
                     return
 
             elif temp_channel is None:
@@ -235,13 +238,14 @@ class ReminderCog(commands.Cog):
                     channel_id = int(temp_channel_id)
                 else:
                     msg = 'チャンネル名が不正です。もう一度、適切な名前で登録してください(#チャンネル名でもOK)。'
-                    await interaction.response.send_message(msg, ephemeral=True)
+                    await interaction.followup.send(msg, ephemeral=True)
                     LOG.info(msg)
                     return
             else:
                 channel_id = temp_channel.id
         else:
             # チャンネルが設定されておらず、ギルドが無いなら、ギルドとチャンネルをNoneとする
+            # DMでリマインド登録されている時点で、Botからも送信可能であるため、DMチェックは不要
             if guild_id is None:
                 channel_id = None
             # ギルドがあり、チャンネルが取得できるならそのチャンネルを使う
@@ -249,10 +253,21 @@ class ReminderCog(commands.Cog):
                 # sendが存在しない場合は、ボイスチャンネル内チャンネルと想定
                 if not hasattr(interaction.channel, 'send'):
                     msg = 'リマインド登録に失敗しました。ボイスチャンネル内のチャンネルは指定できません(DMで申し訳ないです)\n他のチャンネルで実行するか、オプションのchannel部分をボイスチャンネル以外で登録してください(#チャンネル名でもOK)'
-                    await interaction.response.send_message(msg, ephemeral=True)
+                    await interaction.followup.send(msg, ephemeral=True)
                     LOG.info(msg)
                     return
                 channel_id = interaction.channel.id
+
+        # DM以外の場合、チャンネルに送信できるか事前チェック
+        if guild_id is not None:
+            channel = discord.utils.get(interaction.guild.text_channels, id=channel_id)
+            try:
+                await channel.send(content='リマインドできるか事前チェックです...。数秒後に消えます', delete_after=3)
+            except:
+                msg = 'リマインド登録に失敗しました。Botは指定されたチャンネルにメッセージ送信できません。\n送信先のチャンネルで、このBotのメッセージ送信権限を許可してください。'
+                await interaction.followup.send(msg, ephemeral=True)
+                LOG.error(msg)
+                return
 
         today = datetime.datetime.now(self.JST).date()
         # 4桁の数字がない場合、先頭に付けてみる
@@ -286,7 +301,7 @@ class ReminderCog(commands.Cog):
         else:
             error_message = '不正な時間のため、リマインドを登録できませんでした'
             LOG.info(error_message)
-            await interaction.response.send_message(error_message, ephemeral=True)
+            await interaction.followup.send(error_message, ephemeral=True)
             return
 
         # リマインド日時への変換
@@ -298,7 +313,7 @@ class ReminderCog(commands.Cog):
             error_message = '不正な日時のため、リマインドを登録できませんでした'
             LOG.info(error_message)
             LOG.info(e)
-            await interaction.response.send_message(error_message, ephemeral=True)
+            await interaction.followup.send(error_message, ephemeral=True)
             return
 
         status = self.remind.STATUS_PROGRESS
@@ -312,7 +327,7 @@ class ReminderCog(commands.Cog):
             if next_remind_datetime is None:
                 error_message = '繰り返し間隔が不正のため、リマインドを登録できませんでした'
                 LOG.info(error_message)
-                await interaction.response.send_message(error_message, ephemeral=True)
+                await interaction.followup.send(error_message, ephemeral=True)
                 return
             repeat_flg  = '1'
 
@@ -320,7 +335,6 @@ class ReminderCog(commands.Cog):
 
         # 実際の処理(remind.pyでやる)
         try:
-            await interaction.response.defer(ephemeral = hidden)
             id = await self.remind.make(guild_id, interaction.user.id, remind_datetime, message, channel_id, status, repeat_flg,
                             repeat_interval, repeat_count, repeat_max_count)
         except:
@@ -602,6 +616,15 @@ class ReminderCog(commands.Cog):
         elif status == '終了したリマインドリスト':
             command_status = self.remind.STATUS_FINISHED
         return command_status
+
+    async def create_dm(self, user_id):
+        remind_user = self.bot.get_user(user_id)
+        text = remind_user or ''
+        if remind_user is None:
+            remind_user = await self.bot.fetch_user(user_id)
+            text = remind_user or ''
+        LOG.debug(f'user id :{str(user_id)}, user:{text}')
+        return await remind_user.create_dm()
 
     async def cog_app_command_error(self, interaction, error):
         '''
