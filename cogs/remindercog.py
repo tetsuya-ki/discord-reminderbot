@@ -391,7 +391,7 @@ class ReminderCog(commands.Cog):
         reply_is_hidden='Botの実行結果を全員に見せるどうか(リマインド自体は普通です/他の人にもリマインドを使わせたい場合、全員に見せる方がオススメです))')
     async def remind_list(self,
                         interaction: discord.Interaction,
-                        status: Literal['実行予定のリマインドリスト(デフォルト)', 'キャンセルしたリマインドリスト', '終了したリマインドリスト'] = '実行予定のリマインドリスト(デフォルト)',
+                        status: Literal['実行予定のリマインドリスト(デフォルト)', 'キャンセルしたリマインドリスト', '終了したリマインドリスト', 'エラーになったリマインドリスト'] = '実行予定のリマインドリスト(デフォルト)',
                         reply_is_hidden: Literal['自分のみ', '全員に見せる'] = SHOW_ME):
         LOG.info('remindをlistするぜ！')
         hidden = True if reply_is_hidden == self.SHOW_ME else False
@@ -414,7 +414,7 @@ class ReminderCog(commands.Cog):
     @app_commands.checks.has_permissions(administrator=True)
     async def _remind_list_guild_all(self,
                                     interaction: discord.Interaction,
-                                    status: Literal['実行予定のリマインドリスト(デフォルト)', 'キャンセルしたリマインドリスト', '終了したリマインドリスト'] = '実行予定のリマインドリスト(デフォルト)',
+                                    status: Literal['実行予定のリマインドリスト(デフォルト)', 'キャンセルしたリマインドリスト', '終了したリマインドリスト', 'エラーになったリマインドリスト'] = '実行予定のリマインドリスト(デフォルト)',
                                     reply_is_hidden: Literal['自分のみ', '全員に見せる'] = SHOW_ME):
         LOG.info('remindをlist(guild)するぜ！')
         command_status = self.get_command_status(status)
@@ -438,7 +438,7 @@ class ReminderCog(commands.Cog):
     @app_commands.check(check_on_dm)
     async def _remind_list_all(self,
                             interaction: discord.Interaction,
-                            status: Literal['実行予定のリマインドリスト(デフォルト)', 'キャンセルしたリマインドリスト', '終了したリマインドリスト'] = '実行予定のリマインドリスト(デフォルト)',
+                            status: Literal['実行予定のリマインドリスト(デフォルト)', 'キャンセルしたリマインドリスト', '終了したリマインドリスト', 'エラーになったリマインドリスト'] = '実行予定のリマインドリスト(デフォルト)',
                             reply_is_hidden: Literal['自分のみ', '全員に見せる'] = SHOW_ME):
         if interaction.user != self.info.owner:
             await interaction.response.send_message('このコマンドはBotのオーナー以外は実行できません', ephemeral = True)
@@ -615,6 +615,8 @@ class ReminderCog(commands.Cog):
             command_status = self.remind.STATUS_CANCELED
         elif status == '終了したリマインドリスト':
             command_status = self.remind.STATUS_FINISHED
+        elif status == 'エラーになったリマインドリスト':
+            command_status = self.remind.STATUS_ERROR
         return command_status
 
     async def create_dm(self, user_id):
