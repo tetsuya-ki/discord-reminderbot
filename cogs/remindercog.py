@@ -17,7 +17,7 @@ LOG = getLogger('reminderbot')
 class ReminderCog(commands.Cog):
     guilds = settings.ENABLE_SLASH_COMMAND_GUILD_ID
     JST = timezone(timedelta(hours=9), 'JST')
-    NUM_1keta = '^[0-9]$'
+    NUM_1to3keta = '^[0-9]{1,3}$'
     SHOW_ME = '自分のみ'
 
     # ReminderCogクラスのコンストラクタ。Botを受取り、インスタンス変数として保持。
@@ -257,15 +257,17 @@ class ReminderCog(commands.Cog):
         today = datetime.datetime.now(self.JST).date()
         # 4桁の数字がない場合、先頭に付けてみる
         nothing_year = re.search('\d{4}', date) is None
-        if '-' in date and  nothing_year:
+        if '-' in date and nothing_year:
             date = f'{today.year}-{date}'
-        elif '/' in date and  nothing_year:
+        elif '/' in date and nothing_year:
             date = f'{today.year}/{date}'
+        elif not nothing_year:
+            date = f'{today.year}{date}'
 
         # エイリアス(特定の文字列の場合、日付に変換)
         if date.lower().startswith('t'):
             date = today
-        elif re.match(self.NUM_1keta, date):
+        elif re.match(self.NUM_1to3keta, date):
             date = today + relativedelta(days=+int(date))
 
         # 時間の変換
