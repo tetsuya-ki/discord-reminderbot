@@ -201,7 +201,7 @@ class Remind:
             if settings.KEEP_DECRYPTED_FILE:
                 os.remove(self.aes.DEC_FILE_PATH)
 
-    def read(self):
+    def read(self, num = 500):
         # readはdecodeしない
         conn = sqlite3.connect(self.FILE_PATH)
         with conn:
@@ -209,8 +209,8 @@ class Remind:
             select_sql = f'''select * from reminder_table where status = '{self.STATUS_PROGRESS}' order by remind_datetime'''
             LOG.debug(select_sql)
             cur.execute(select_sql)
-            self.remind_rows = cur.fetchmany(100)
-            LOG.info('＊＊＊＊＊＊読み込みが完了しました＊＊＊＊＊＊')
+            self.remind_rows = cur.fetchmany(num)
+            LOG.info(f'＊＊＊＊＊＊読み込みが完了しました({len(self.remind_rows)}件)＊＊＊＊＊＊')
             LOG.debug(self.remind_rows)
 
     async def make(self, guild_id, author_id, remind_datetime: datetime,
