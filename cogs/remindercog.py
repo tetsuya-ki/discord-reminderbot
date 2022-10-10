@@ -159,9 +159,11 @@ class ReminderCog(commands.Cog):
 
                     id = await self.remind.make(remind[2], remind[3], next_remind_datetime, remind_message, remind[4], status, repeat_flg,
                         remind[10], repeat_count, remind[8])
-                    if channel:
+                    try:
                         await remind_msg.reply(f'次回のリマインドを登録しました(No.{id})')
-                    else:
+                    except:
+                        # 投稿に失敗した場合は登録を削除してしまう
+                        await self.remind.update_status(id, remind[2], self.remind.STATUS_ERROR)
                         LOG.error(f'channelがないので、メッセージ送れませんでした！(No.{id})')
 
             else:
