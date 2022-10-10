@@ -24,6 +24,14 @@
       - リマインドしたリストを表示します
     - エラーになったリマインドリスト
       - エラーになってしまったリストを表示します
+  - filter
+    - リマインドリストを検索
+      - 検索対象は以下
+        - No
+        - 日付
+        - メッセージ
+        - 繰り返し設定
+    - [v1.0.0](https://github.com/tetsuya-ki/discord-reminderbot/releases/tag/v1.0.0)で追加
   - reply_is_hidden
     - 自分のみ
       - 実行結果は自分だけ見ることができます
@@ -116,6 +124,14 @@
       - リマインドしたリストを表示します
     - エラーになったリマインドリスト
       - エラーになってしまったリストを表示します
+  - filter
+    - リマインドリストを検索
+      - 検索対象は以下
+        - No
+        - 日付
+        - メッセージ
+        - 繰り返し設定
+    - [v1.0.0](https://github.com/tetsuya-ki/discord-reminderbot/releases/tag/v1.0.0)で追加
   - reply_is_hidden
     - 自分のみ
       - 実行結果は自分だけ見ることができます
@@ -136,6 +152,14 @@
       - リマインドしたリストを表示します
     - エラーになったリマインドリスト
       - エラーになってしまったリストを表示します
+  - filter
+    - リマインドリストを検索
+      - 検索対象は以下
+        - No
+        - 日付
+        - メッセージ
+        - 繰り返し設定
+    - [v1.0.0](https://github.com/tetsuya-ki/discord-reminderbot/releases/tag/v1.0.0)で追加
   - reply_is_hidden
     - 自分のみ
       - 実行結果は自分だけ見ることができます

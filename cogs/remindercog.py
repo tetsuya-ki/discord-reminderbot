@@ -388,10 +388,13 @@ class ReminderCog(commands.Cog):
     @app_commands.describe(
         status='リマインドリストで表示させるステータス')
     @app_commands.describe(
+        filter='リマインドリストを検索')
+    @app_commands.describe(
         reply_is_hidden='Botの実行結果を全員に見せるどうか(リマインド自体は普通です/他の人にもリマインドを使わせたい場合、全員に見せる方がオススメです))')
     async def remind_list(self,
                         interaction: discord.Interaction,
                         status: Literal['実行予定のリマインドリスト(デフォルト)', 'キャンセルしたリマインドリスト', '終了したリマインドリスト', 'エラーになったリマインドリスト'] = '実行予定のリマインドリスト(デフォルト)',
+                        filter: str = None,
                         reply_is_hidden: Literal['自分のみ', '全員に見せる'] = SHOW_ME):
         LOG.info('remindをlistするぜ！')
         hidden = True if reply_is_hidden == self.SHOW_ME else False
@@ -399,7 +402,7 @@ class ReminderCog(commands.Cog):
         command_status = self.get_command_status(status)
         self.check_printer_is_running()
 
-        rows = self.remind.list(interaction, command_status)
+        rows = self.remind.list(interaction, command_status, filter)
         await interaction.followup.send(rows, ephemeral = hidden)
 
     @app_commands.command(
@@ -408,6 +411,8 @@ class ReminderCog(commands.Cog):
     @app_commands.describe(
         status='リマインドリストで表示させるステータス')
     @app_commands.describe(
+        filter='リマインドリストを検索')
+    @app_commands.describe(
         reply_is_hidden='Botの実行結果を全員に見せるどうか(リマインド自体は普通です/他の人にもリマインドを使わせたい場合、全員に見せる方がオススメです))')
     @app_commands.guild_only()
     @app_commands.default_permissions(administrator=True)
@@ -415,6 +420,7 @@ class ReminderCog(commands.Cog):
     async def _remind_list_guild_all(self,
                                     interaction: discord.Interaction,
                                     status: Literal['実行予定のリマインドリスト(デフォルト)', 'キャンセルしたリマインドリスト', '終了したリマインドリスト', 'エラーになったリマインドリスト'] = '実行予定のリマインドリスト(デフォルト)',
+                                    filter: str = None,
                                     reply_is_hidden: Literal['自分のみ', '全員に見せる'] = SHOW_ME):
         LOG.info('remindをlist(guild)するぜ！')
         command_status = self.get_command_status(status)
@@ -422,7 +428,7 @@ class ReminderCog(commands.Cog):
         await interaction.response.defer(ephemeral = hidden)
         self.check_printer_is_running()
 
-        rows = self.remind.list_all_guild(interaction, command_status)
+        rows = self.remind.list_all_guild(interaction, command_status, filter)
         await interaction.followup.send(rows, ephemeral = hidden)
 
     def check_on_dm(interaction: discord.Interaction) -> bool:
@@ -434,11 +440,14 @@ class ReminderCog(commands.Cog):
     @app_commands.describe(
         status='リマインドリストで表示させるステータス')
     @app_commands.describe(
+        filter='リマインドリストを検索')
+    @app_commands.describe(
         reply_is_hidden='Botの実行結果を全員に見せるどうか(リマインド自体は普通です/他の人にもリマインドを使わせたい場合、全員に見せる方がオススメです))')
     @app_commands.check(check_on_dm)
     async def _remind_list_all(self,
                             interaction: discord.Interaction,
                             status: Literal['実行予定のリマインドリスト(デフォルト)', 'キャンセルしたリマインドリスト', '終了したリマインドリスト', 'エラーになったリマインドリスト'] = '実行予定のリマインドリスト(デフォルト)',
+                            filter: str = None,
                             reply_is_hidden: Literal['自分のみ', '全員に見せる'] = SHOW_ME):
         if interaction.user != self.info.owner:
             await interaction.response.send_message('このコマンドはBotのオーナー以外は実行できません', ephemeral = True)
@@ -449,7 +458,7 @@ class ReminderCog(commands.Cog):
         await interaction.response.defer(ephemeral = hidden)
         self.check_printer_is_running()
 
-        rows = self.remind.list_all(interaction, command_status)
+        rows = self.remind.list_all(interaction, command_status, filter)
         await interaction.followup.send(rows, ephemeral = hidden)
 
     @app_commands.command(

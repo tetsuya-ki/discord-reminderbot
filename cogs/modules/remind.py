@@ -289,7 +289,7 @@ class Remind:
             guild = discord.utils.get(self.bot.guilds, id=self.saved_dm_guild)
             await self.set_discord_attachment_file(guild)
 
-    def list(self, interaction: discord.Interaction, status: str = 'Progress'):
+    def list(self, interaction: discord.Interaction, status: str = 'Progress', filter: str = None):
         self.decode()
         conn = sqlite3.connect(self.FILE_PATH)
         with conn:
@@ -307,20 +307,21 @@ class Remind:
             LOG.debug(select_sql)
             cur.execute(select_sql)
             rows = cur.fetchmany(100)
-            message = self.create_message(rows)
+            message = self.create_message(rows, filter)
             escaped_mention_text = '(データがありません)' if len(message) == 0 else discord.utils.escape_mentions(message)
             LOG.debug(escaped_mention_text)
         self.encode()
         chopped_escaped_mention_text = escaped_mention_text[:1900] + ('...(省略)...' if escaped_mention_text[1900:] else '')
-        return chopped_escaped_mention_text
+        text = f'件数: {len(rows)} ステータス: {status}\n' + chopped_escaped_mention_text
+        return text
 
-    def list_all_guild(self, interaction: discord.Interaction, status: str = None):
-        return self._list_all_func(interaction, True, status)
+    def list_all_guild(self, interaction: discord.Interaction, status: str = None, filter: str = None):
+        return self._list_all_func(interaction, True, status, filter)
 
-    def list_all(self, interaction: discord.Interaction, status: str = None):
-        return self._list_all_func(interaction, False, status)
+    def list_all(self, interaction: discord.Interaction, status: str = None, filter: str = None):
+        return self._list_all_func(interaction, False, status, filter)
 
-    def _list_all_func(self, interaction: discord.Interaction, is_guild: bool, status: str = None):
+    def _list_all_func(self, interaction: discord.Interaction, is_guild: bool, status: str = None, filter: str = None):
         self.decode()
         conn = sqlite3.connect(self.FILE_PATH)
         with conn:
@@ -344,23 +345,27 @@ class Remind:
 
             cur.execute(select_sql)
             rows = cur.fetchmany(100)
-            message = self.create_message(rows)
+            message = self.create_message(rows, filter)
             escaped_mention_text = '(データがありません)' if len(message) == 0 else discord.utils.escape_mentions(message)
             LOG.debug(escaped_mention_text)
         self.encode()
         chopped_escaped_mention_text = escaped_mention_text[:1900] + ('...(省略)...' if escaped_mention_text[1900:] else '')
-        return chopped_escaped_mention_text
+        text = f'件数: {len(rows)} ステータス: {status}\n' + chopped_escaped_mention_text
+        return text
 
-    def create_message(self, rows):
+    def create_message(self, rows, filter):
         message = ''
         for row in rows:
             channel = f'<#{row[4]}>' if row[4] is not None else 'DM'
             repeat_max = str(row[8]) if row[8] is not None else '設定なし(解除するまで)'
             repeat_interval_message = f'間隔: {row[10]}, ' if row[10] is not None else ''
-            repeat_message = f'繰り返す({repeat_interval_message}最大回数: {repeat_max})' if row[9] == '1' else '繰り返さない'
+            repeat_message = f'あり({repeat_interval_message}最大回数: {repeat_max})' if row[9] == '1' else 'なし'
+            filter_message = repeat_message+row[5]+str(row[0])+row[1]
+            if filter is not None and not filter in filter_message:
+                continue
             message += f'No. {row[0]} ' + discord.utils.escape_markdown('Remind_datetime: ') + f'{row[1]}\n'
-            message += f'Message: {row[5]}\n'
-            message += f'Status: {row[6]} {repeat_message} 通知先: {channel}\n--\n'
+            message += f'メッセージ: {row[5]}\n'
+            message += f'繰り返し設定: {repeat_message} 通知先: {channel}\n--\n'
         return message
 
     def get(self, interaction: discord.Interaction, id: int):
