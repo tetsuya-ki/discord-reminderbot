@@ -272,17 +272,19 @@ class ReminderCog(commands.Cog):
                 return
 
         today = datetime.datetime.now(self.JST).date()
-        # 4桁の数字がない場合、先頭に付けてみる
-        nothing_year = re.search('\d{4}', date) is None
-        if '-' in date and nothing_year:
+        # dateの確認&変換
+        if re.match(r'[0-9]{4}-[0-9]{1,2}-[0-9]{1,2}', date) \
+        or re.match(r'[0-9]{4}/[0-9]{1,2}/[0-9]{1,2}', date) \
+        or re.match(r'[0-9]{8}', date):
+            pass
+        elif re.match(r'^[0-9]{1,2}-[0-9]{1,2}', date):
             date = f'{today.year}-{date}'
-        elif '/' in date and nothing_year:
+        elif re.match(r'[0-9]{1,2}/[0-9]{1,2}', date):
             date = f'{today.year}/{date}'
-        elif not nothing_year:
+        elif re.match(r'[0-9]{4}', date):
             date = f'{today.year}{date}'
-
         # エイリアス(特定の文字列の場合、日付に変換)
-        if date.lower().startswith('t'):
+        elif date.lower().startswith('t'):
             date = today
         elif re.match(self.NUM_1to3keta, date):
             date = today + relativedelta(days=+int(date))
