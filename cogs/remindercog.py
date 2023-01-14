@@ -82,8 +82,10 @@ class ReminderCog(commands.Cog):
                             msg = f'＊＊＊さらに、{self.remind.saved_dm_guild}(saved_dm_guild)のチャンネル({self.remind.REMIND_CONTROL_CHANNEL})への投稿に失敗しました！＊＊＊'
                             LOG.error(msg)
                             continue
+                # ギルド対応
                 else:
                     channel = discord.utils.get(self.bot.get_all_channels(), guild__id=remind[2], id=remind[4])
+                    # チャンネルへの投稿
                     if channel is not None:
                         try:
                             remind_msg = await channel.send(msg)
@@ -108,7 +110,34 @@ class ReminderCog(commands.Cog):
                                 continue
 
                             continue
+                    # スレッドへの投稿
+                    else:
+                        try:
+                            guild = await self.bot.fetch_guild(remind[2])
+                            # utilsやget_channel_or_threadで取得。無理な場合はfetch_channelで取得
+                            thread = guild.get_channel_or_thread(remind[4])
+                            if thread is None:
+                                thread = await guild.fetch_channel(remind[4])
+                            remind_msg = await thread.send(msg)
+                        except:
+                            msg = f'＊＊＊{remind[2]}のスレッド({remind[4]})への投稿に失敗しました！＊＊＊'
+                            LOG.error(msg)
 
+                            # リマインドを削除
+                            try:
+                                await self.remind.update_status(remind[0], remind[2], self.remind.STATUS_ERROR)
+                            except:
+                                LOG.warning('リマインドを削除(投稿失敗/CH)/update中に失敗(おそらく添付用チャンネルの作成、または、添付に失敗)')
+                                continue
+
+                            # 通知失敗について連絡
+                            try:
+                                get_control_channel = discord.utils.get(self.bot.get_all_channels(),guild__id=remind[2],name=self.remind.REMIND_CONTROL_CHANNEL)
+                                remind_msg = await get_control_channel.send(f'@here No.{remind[0]}は権限不足などの原因でリマインドできませんでした。リマインドしたい場合は、投稿先スレッドの設定見直しをお願いします\n> {remind[5]}')
+                            except:
+                                msg = f'＊＊＊さらに、{remind[2]}のチャンネル({self.remind.REMIND_CONTROL_CHANNEL})への投稿に失敗しました(スレッド投稿後)！＊＊＊'
+                                LOG.error(msg)
+                                continue
                 # リマインドを削除
                 try:
                     await self.remind.update_status(remind[0], remind[2], self.remind.STATUS_FINISHED)
@@ -266,10 +295,14 @@ class ReminderCog(commands.Cog):
             try:
                 await channel.send(content='リマインドできるか事前チェックです...。数秒後に消えます', delete_after=3)
             except:
-                msg = 'リマインド登録に失敗しました。Botは指定されたチャンネルにメッセージ送信できません。\n送信先のチャンネルで、このBotのメッセージ送信権限を許可してください。'
-                await interaction.followup.send(msg, ephemeral=True)
-                LOG.error(msg)
-                return
+                try:
+                    thread = discord.utils.get(interaction.guild.threads, id=channel_id)
+                    await thread.send(content='リマインドできるか事前チェックです...。数秒後に消えます', delete_after=3)
+                except:
+                    msg = 'リマインド登録に失敗しました。Botは指定されたチャンネルにメッセージ送信できません。\n送信先のチャンネルで、このBotのメッセージ送信権限を許可してください。'
+                    await interaction.followup.send(msg, ephemeral=True)
+                    LOG.error(msg)
+                    return
 
         today = datetime.datetime.now(self.JST).date()
         # dateの確認&変換
