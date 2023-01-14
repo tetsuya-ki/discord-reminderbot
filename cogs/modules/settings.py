@@ -1,4 +1,4 @@
-import os
+import os, discord
 from os.path import join, dirname
 from dotenv import load_dotenv
 from logging import DEBUG, INFO, WARNING, ERROR
@@ -31,6 +31,16 @@ def get_log_level(str):
     else:
         return WARNING
 
+def split_guild_env(str):
+    guilds = []
+    if str is None or str == '':
+        pass
+    elif not ';' in str:
+        guilds.append(discord.Object(str))
+    else:
+        guilds = list(map(discord.Object, str.split(';')))
+    return guilds
+
 # 環境変数をファイルから読み込む
 load_dotenv(verbose=True)
 dotenv_path = join(dirname(__file__), 'files' + os.sep + '.env')
@@ -38,10 +48,11 @@ load_dotenv(dotenv_path)
 
 DISCORD_TOKEN = os.environ.get('DISCORD_TOKEN')
 LOG_LEVEL = get_log_level(os.environ.get('LOG_LEVEL'))
-ENABLE_SLASH_COMMAND_GUILD_ID_LIST = os.environ.get('ENABLE_SLASH_COMMAND_GUILD_ID_LIST')
 KEEP_DECRYPTED_FILE = not if_env(os.environ.get('KEEP_DECRYPTED_FILE'))
 IS_HEROKU = if_env(os.environ.get('IS_HEROKU'))
 IS_REPLIT = if_env(os.environ.get('IS_REPLIT'))
 RESTRICT_ATTACHMENT_FILE = if_env(os.environ.get('RESTRICT_ATTACHMENT_FILE'))
 PRIORITY_GUILD = os.environ.get('PRIORITY_GUILD')
 REMIND_CONTROL_CHANNEL_NAME = os.environ.get('REMIND_CONTROL_CHANNEL_NAME')
+APPLICATION_ID = os.environ.get('APPLICATION_ID')
+ENABLE_SLASH_COMMAND_GUILD_ID = split_guild_env(os.environ.get('ENABLE_SLASH_COMMAND_GUILD_ID'))

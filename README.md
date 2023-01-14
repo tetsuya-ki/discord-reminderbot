@@ -2,7 +2,7 @@
 # このBotについて
 
 - Discordでリマインダーを使うBotです(リマインドの定期実行も可能)
-- スラッシュコマンド（[eunwoo1104 / discord-py-slash-command](https://github.com/eunwoo1104/discord-py-slash-command)）が使えるため、コマンドを覚える必要がなく、それぞれのオプションの意味が表示されます
+- discord.py v2.0のスラッシュコマンドが使えるため、コマンドを覚える必要がなく、それぞれのオプションの意味が表示されます
   - [有名なリマインダーBotが定期実行に寄付が必要](https://qiita.com/kbt0401/items/1d26f2c99580647e12dc)という記事を見て作ってみました
 - 以下の招待リンクからお試しできます
   - 招待リンク: <https://discord.com/api/oauth2/authorize?client_id=873515660674756639&permissions=2147723280&scope=bot%20applications.commands>
@@ -22,6 +22,16 @@
       - キャンセルされたリマインドリストを表示します
     - 終了したリマインドリスト
       - リマインドしたリストを表示します
+    - エラーになったリマインドリスト
+      - エラーになってしまったリストを表示します
+  - filter
+    - リマインドリストを検索
+      - 検索対象は以下
+        - No
+        - 日付
+        - メッセージ
+        - 繰り返し設定
+    - [v1.0.0](https://github.com/tetsuya-ki/discord-reminderbot/releases/tag/v1.0.0)で追加
   - reply_is_hidden
     - 自分のみ
       - 実行結果は自分だけ見ることができます
@@ -38,12 +48,19 @@
     - 日数でも登録できる(`0`で当日、`1`で1日後)
     - yyyy/mm/dd形式で年も含めて登録
     - mm-dd形式もOK(yyyy-mm-dd形式もOK)
+    - mmdd形式もOK
+    - 1-3桁の場合、現在日時+その日数後として登録
+      - `0`→当日
+      - `1`→1日後
+      - `100`→100日後
   - time(リマインド時間)
     - hh:mi形式(例→`23:12`)
     - xxh(xx時間後という意味。例→`10h`)
     - xxmi(xx分後という意味。例→`10mi`)
   - message(メッセージ)
     - リマインドするメッセージ
+    - 改行したい場合は`<br>`、`<改行>`、`【改行】`、`@@@`のどれかを入力してください
+      - 例→`改行テスト<br>改行したよ！`
     - メンションしたい場合、通常のメッセージと同様に、@xxxx形式で入力してください（リマインド時にメンションされます）
 - オプション
   - repeat_interval(繰り返し間隔)
@@ -54,6 +71,13 @@
     - X年: **X**y
       - Xは数字(例→`10mi`)
       - 通知した後、上記で指定しただけ遅らせた年月で通知するリマインドを作成します
+    - 特殊なもの
+      - 平日: **平日**
+        - 月曜日〜金曜日にリマインドされます(祝日は考慮しません)
+      - 祝日: **祝日**
+        - 土曜日〜日曜日にリマインドされます
+      - 曜日: **月水**
+        - 指定した曜日にリマインドされます(`月水金`のように複数指定できます)
   - repoeat_max_count(繰り返し最大回数)
     - 数字を設定
     - 例→`2`としたら、1回目の通知の後に**繰り返し間隔だけ遅らせたリマインドが作成されます**。2回目を通知し、それ以降は通知されません
@@ -98,6 +122,16 @@
       - キャンセルされたリマインドリストを表示します
     - 終了したリマインドリスト
       - リマインドしたリストを表示します
+    - エラーになったリマインドリスト
+      - エラーになってしまったリストを表示します
+  - filter
+    - リマインドリストを検索
+      - 検索対象は以下
+        - No
+        - 日付
+        - メッセージ
+        - 繰り返し設定
+    - [v1.0.0](https://github.com/tetsuya-ki/discord-reminderbot/releases/tag/v1.0.0)で追加
   - reply_is_hidden
     - 自分のみ
       - 実行結果は自分だけ見ることができます
@@ -116,6 +150,16 @@
       - キャンセルされたリマインドリストを表示します
     - 終了したリマインドリスト
       - リマインドしたリストを表示します
+    - エラーになったリマインドリスト
+      - エラーになってしまったリストを表示します
+  - filter
+    - リマインドリストを検索
+      - 検索対象は以下
+        - No
+        - 日付
+        - メッセージ
+        - 繰り返し設定
+    - [v1.0.0](https://github.com/tetsuya-ki/discord-reminderbot/releases/tag/v1.0.0)で追加
   - reply_is_hidden
     - 自分のみ
       - 実行結果は自分だけ見ることができます
@@ -150,15 +194,6 @@
 
 - ログレベル(DEBUG/INFO/WARNING/ERROR)
 - 例: LOG_LEVEL="INFO"
-
-### ENABLE_SLASH_COMMAND_GUILD_ID_LIST(**使用するにはソースの修正が必要です**)
-
-- この環境変数を使用する場合、ソースの修正をしてください
-  - それぞれのメソッドにある、@cog_ext.cog_slashのguildsについてのコメントアウトを解除する必要があります
-- スラッシュコマンドを有効にするギルドID(複数ある場合は「;」を間に挟むこと)
-- 例
-  - 1件の場合: ENABLE_SLASH_COMMAND_GUILD_ID_LIST=18471289371923
-  - 2件の場合: ENABLE_SLASH_COMMAND_GUILD_ID_LIST=18471289371923;1389103890128390
 
 ### KEEP_DECRYPTED_FILE
 
@@ -195,6 +230,23 @@
   - 他のギルドもその名前のチャンネルが保存先に使われるので気をつけてください
   - テスト中に複数のリマインダーBot動かしてて困ったので作成した環境変数です(基本開発に使うもの)
 - 例: REMIND_CONTROL_CHANNEL_NAME=リマインドチャンネル
+
+### APPLICATION_ID
+
+- あなたのBotの`APPLICATION ID`を指定する(スラッシュコマンドを使う上で設定が必須となります)。[v1.0.0](https://github.com/tetsuya-ki/discord-reminderbot/releases/tag/v1.0.0)で追加
+  - [開発者ポータル](https://discord.com/developers/applications/)の該当Botの`General Information`の上部にある、`APPLICATION ID`
+
+### ENABLE_SLASH_COMMAND_GUILD_ID
+
+- あなたのBotのテストする際はテスト用のギルドですぐに使用したいものと思われます(グローバルコマンドは適用まで時間がかかってしまう)
+- その場合、この環境変数にテスト用ギルドのIDを設定することで、すぐにスラッシュコマンドが試せます(ギルドコマンドとして設定する)。[v1.0.0](https://github.com/tetsuya-ki/discord-reminderbot/releases/tag/v1.0.0)で追加
+  - 設定が**複数存在する場合、「;」を挟む必要**がある
+    - 1件の場合: ENABLE_SLASH_COMMAND_GUILD_ID=18471289371923
+    - 2件の場合: ENABLE_SLASH_COMMAND_GUILD_ID=18471289371923;1389103890128390
+
+### 廃止された環境変数
+
+- `ENABLE_SLASH_COMMAND_GUILD_ID_LIST`: ENABLE_SLASH_COMMAND_GUILD_IDに置き換えられました
 
 ## 動かし方
 
@@ -234,13 +286,14 @@ services:
     environment:
       - DISCORD_TOKEN=__あなたのDicordトークン__
       - LOG_LEVEL=INFO
-      - ENABLE_SLASH_COMMAND_GUILD_ID_LIST= __あなたのGuild_IDを入力(数字/複数あるなら;を挟むこと。グローバルコマンドの場合は入力しないこと！(その場合1時間程度登録に時間がかかる可能性があります))__
+      - ENABLE_SLASH_COMMAND_GUILD_ID= __あなたのGuild_IDを入力(数字/複数あるなら;を挟むこと。グローバルコマンドの場合は入力しないこと！(その場合1時間程度登録に時間がかかる可能性があります))__
       - KEEP_DECRYPTED_FILE=FALSE
       - IS_HEROKU=FALSE
       - IS_REPLIT=FALSE
       - RESTRICT_ATTACHMENT_FILE=FALSE
       - PRIORITY_GUILD=__あなたのGuild_IDを入力(数字)__
       - REMIND_CONTROL_CHANNEL_NAME=remind_control_channel
+      - APPLICATION_ID=__あなたのBotのAPPLICATION_IDを入力(数字)__
 ```
 
 #### 起動・停止操作

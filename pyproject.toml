@@ -6,11 +6,10 @@ authors = ["tetsuya-k <64536338+tetsuya-ki@users.noreply.github.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.8"
-aiohttp = "^3.7.4"
-async-timeout = "3.0.1"
+aiohttp = "^3.8.0"
 attrs = "^20.3.0"
 chardet = "3.0.4"
-"discord.py" = "^1.6.0"
+"discord.py" = "^2.0.0"
 flask = "^1.1.2"
 idna = "2.10"
 python-dateutil = "^2.8.1"
@@ -20,7 +19,6 @@ multidict = "4.7.6"
 yarl = "1.5.1"
 toml = "^0.10.2"
 pycryptodome = "^3.10.1"
-discord-py-interactions = "^3.0.2"
 markupsafe = "2.0.1"
 
 [tool.poetry.dev-dependencies]
