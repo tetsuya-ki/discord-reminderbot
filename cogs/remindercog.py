@@ -19,6 +19,7 @@ class ReminderCog(commands.Cog):
     JST = timezone(timedelta(hours=9), 'JST')
     NUM_1to3keta = '^[0-9]{1,3}$'
     SHOW_ME = '自分のみ'
+    NOT_SILENT = 'ふつう'
 
     # ReminderCogクラスのコンストラクタ。Botを受取り、インスタンス変数として保持。
     def __init__(self, bot):
@@ -54,15 +55,20 @@ class ReminderCog(commands.Cog):
         for remind in self.remind.remind_rows:
             remind_datetime = dateutil.parser.parse(f'{remind[1]} +0900 (JST)',
                                                     yearfirst=True)
+            # リマインドを発動
             if remind_datetime <= now:
-                # リマインドを発動
+                # silentの設定
+                silent_flg = False
                 # メッセージ作成
                 msg = re.sub(r'<br>|[\[\(【<]改行[\)\]」】>]|@{3}', '\n', remind[5])
+                if re.search('@silent', msg, flags=re.IGNORECASE):
+                    msg = re.sub(r' *@silent *', '', msg, flags=re.IGNORECASE)
+                    silent_flg = True
                 # DMの対応
                 if remind[2] is None:
                     channel = await self.create_dm(remind[3])
                     try:
-                        remind_msg = await channel.send(msg)
+                        remind_msg = await channel.send(msg, silent=silent_flg)
                     except discord.errors.Forbidden:
                         msg = f'＊＊＊{remind[2]}のDMへの投稿に失敗しました！＊＊＊'
                         LOG.error(msg)
@@ -88,7 +94,7 @@ class ReminderCog(commands.Cog):
                     # チャンネルへの投稿
                     if channel is not None:
                         try:
-                            remind_msg = await channel.send(msg)
+                            remind_msg = await channel.send(msg, silent=silent_flg)
                         except:
                             msg = f'＊＊＊{remind[2]}のチャンネルへの投稿に失敗しました！＊＊＊'
                             LOG.error(msg)
@@ -118,7 +124,7 @@ class ReminderCog(commands.Cog):
                             thread = guild.get_channel_or_thread(remind[4])
                             if thread is None:
                                 thread = await guild.fetch_channel(remind[4])
-                            remind_msg = await thread.send(msg)
+                            remind_msg = await thread.send(msg, silent=silent_flg)
                         except:
                             msg = f'＊＊＊{remind[2]}のスレッド({remind[4]})への投稿に失敗しました！＊＊＊'
                             LOG.error(msg)
@@ -206,13 +212,15 @@ class ReminderCog(commands.Cog):
     @app_commands.describe(
         time='時間(hh24:mi形式)、もしくは、xxh(xxは数字(0-9)。xx時間後)、xxmi(xx分後)')
     @app_commands.describe(
-        message='メッセージ(<br>か@@@などで改行。メンションは通常のメッセージのように @xxxx と書く)')
+        message='メッセージ(<br>か@@@などで改行。メンションは通常のメッセージのように @xxxx と書く。@silentでこっそり)')
     @app_commands.describe(
         repeat_interval='繰り返し間隔(数字+英字を付与：分(mi)/時間(h)/日(d)/週(w)/月(m)/年(y)か、特殊(平日/休日/月初/月末/曜日文字列(「月水」など)))')
     @app_commands.describe(
         repeat_max_count='繰り返し最大数(設定がない場合、ずっと繰り返されます)')
     @app_commands.describe(
         channel='リマインドを投稿するチャンネル(#general等。「DM」でBotとのDMへ登録されます。未指定の場合はリマインド登録したチャンネルに投稿)')
+    @app_commands.describe(
+        silent='こっそり送信(メッセージに@silentでも可)')
     @app_commands.describe(
         reply_is_hidden='Botの実行結果を全員に見せるどうか(リマインド自体は普通です/他の人にもリマインドを使わせたい場合、全員に見せる方がオススメです))')
     async def _remind_make(self,
@@ -223,9 +231,11 @@ class ReminderCog(commands.Cog):
                         repeat_interval: str = None,
                         repeat_max_count: app_commands.Range[int, 1, 999] = None,
                         channel: str = None,
+                        silent: Literal['ふつう', 'こっそり'] = NOT_SILENT,
                         reply_is_hidden: Literal['自分のみ', '全員に見せる'] = SHOW_ME):
         LOG.info('remindをmakeするぜ！')
         hidden = True if reply_is_hidden == self.SHOW_ME else False
+        silent_mode = True if silent != self.NOT_SILENT else False
         self.check_printer_is_running()
         await interaction.response.defer(ephemeral = hidden)
 
@@ -370,6 +380,9 @@ class ReminderCog(commands.Cog):
 
         repeat_count = 1
 
+        # silentの設定(silentならこっそり先頭に@silent付与)
+        if silent_mode:
+            message = '@silent ' + message
         # 実際の処理(remind.pyでやる)
         try:
             id = await self.remind.make(guild_id, interaction.user.id, remind_datetime, message, channel_id, status, repeat_flg,
