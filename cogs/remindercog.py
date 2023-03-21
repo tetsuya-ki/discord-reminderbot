@@ -189,7 +189,7 @@ class ReminderCog(commands.Cog):
                     id = await self.remind.make(remind[2], remind[3], next_remind_datetime, remind_message, remind[4], status, repeat_flg,
                         remind[10], repeat_count, remind[8])
                     try:
-                        await remind_msg.reply(f'次回のリマインドを登録しました(No.{id})')
+                        await remind_msg.reply(f'次回のリマインドを登録しました(No.{id})', silent=True)
                     except:
                         # 投稿に失敗した場合は登録を削除してしまう
                         await self.remind.update_status(id, remind[2], self.remind.STATUS_ERROR)
@@ -256,7 +256,7 @@ class ReminderCog(commands.Cog):
                 dm_channel = await self.create_dm(interaction.user.id)
                 try:
                     # await dm_channel.typing() # typingで送信できるかチェックできたら嬉しかったけれど、これじゃチェックできなかった...
-                    await dm_channel.send(content='リマインドできるか事前チェックです...。数秒後に消えます', delete_after=3) # 実際に送信してみて、DMできるかチェックする
+                    await dm_channel.send(content='リマインドできるか事前チェックです...。数秒後に消えます', delete_after=3, silent=True) # 実際に送信してみて、DMできるかチェックする
                 except:
                     msg = 'リマインド登録に失敗しました。DM(ダイレクトメッセージ)できません。\nこのBotのあるサーバーの「プライバシー設定」で「サーバーにいるメンバーからのダイレクトメッセージを許可する」をONにしてください。」'
                     await interaction.followup.send(msg, ephemeral=True)
@@ -293,11 +293,11 @@ class ReminderCog(commands.Cog):
         if guild_id is not None:
             channel = discord.utils.get(interaction.guild.text_channels, id=channel_id)
             try:
-                await channel.send(content='リマインドできるか事前チェックです...。数秒後に消えます', delete_after=3)
+                await channel.send(content='リマインドできるか事前チェックです...。数秒後に消えます', delete_after=3, silent=True)
             except:
                 try:
                     thread = discord.utils.get(interaction.guild.threads, id=channel_id)
-                    await thread.send(content='リマインドできるか事前チェックです...。数秒後に消えます', delete_after=3)
+                    await thread.send(content='リマインドできるか事前チェックです...。数秒後に消えます', delete_after=3, silent=True)
                 except:
                     msg = 'リマインド登録に失敗しました。Botは指定されたチャンネルにメッセージ送信できません。\n送信先のチャンネルで、このBotのメッセージ送信権限を許可してください。'
                     await interaction.followup.send(msg, ephemeral=True)
