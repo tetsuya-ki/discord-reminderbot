@@ -239,6 +239,74 @@ class ReminderCog(commands.Cog):
         self.check_printer_is_running()
         await interaction.response.defer(ephemeral = hidden)
 
+        today = datetime.datetime.now(self.JST).date()
+        # dateの確認&変換
+        if re.match(r'[0-9]{4}-[0-9]{1,2}-[0-9]{1,2}', date) \
+        or re.match(r'[0-9]{4}/[0-9]{1,2}/[0-9]{1,2}', date) \
+        or re.match(r'[0-9]{8}', date):
+            pass
+        elif re.match(r'^[0-9]{1,2}-[0-9]{1,2}', date):
+            date = f'{today.year}-{date}'
+        elif re.match(r'[0-9]{1,2}/[0-9]{1,2}', date):
+            date = f'{today.year}/{date}'
+        elif re.match(r'[0-9]{4}', date):
+            date = f'{today.year}{date}'
+        # エイリアス(特定の文字列の場合、日付に変換)
+        elif date.lower().startswith('t'):
+            date = today
+        elif re.match(self.NUM_1to3keta, date):
+            date = today + relativedelta(days=+int(date))
+
+        # 時間の変換
+        now_time = datetime.datetime.now(self.JST)
+        m_hours = re.match('^([0-9]{1,3})h$', time)
+        m_minutes = re.match('^([0-9]{1,4})mi$', time)
+        m_normal = re.match('^([0-9]{1,2}:[0-9]{1,2})$', time)
+        if time == '0':
+            time = now_time.strftime('%H:%M')
+        elif m_hours:
+            result_time = now_time + datetime.timedelta(hours=int(m_hours.group(1)))
+            time = result_time.strftime('%H:%M')
+        elif m_minutes:
+            result_time = now_time + datetime.timedelta(minutes=int(m_minutes.group(1)))
+            time = result_time.strftime('%H:%M')
+        elif m_normal:
+            pass
+        else:
+            error_message = '不正な時間のため、リマインドを登録できませんでした'
+            LOG.info(error_message)
+            await interaction.followup.send(error_message, ephemeral=True)
+            return
+
+        # リマインド日時への変換
+        remind_datetime = None
+        try:
+            remind_datetime = dateutil.parser.parse(
+                f'{date} {time} +0900 (JST)', yearfirst=True)
+        except ValueError as e:
+            error_message = '不正な日時のため、リマインドを登録できませんでした'
+            LOG.info(error_message)
+            LOG.info(e)
+            await interaction.followup.send(error_message, ephemeral=True)
+            return
+
+        status = self.remind.STATUS_PROGRESS
+
+        # 繰り返し間隔の設定
+        repeat_flg = '0'
+        if repeat_interval:
+            # 間隔設定のチェック
+            now = datetime.datetime.now(self.JST)
+            next_remind_datetime = self.check_next_reminder_date(remind_datetime, repeat_interval, now)
+            if next_remind_datetime is None:
+                error_message = '繰り返し間隔が不正のため、リマインドを登録できませんでした'
+                LOG.info(error_message)
+                await interaction.followup.send(error_message, ephemeral=True)
+                return
+            repeat_flg  = '1'
+
+        repeat_count = 1
+
         # ギルドの設定
         if interaction.guild is not None:
             guild_id = interaction.guild.id
@@ -313,72 +381,6 @@ class ReminderCog(commands.Cog):
                     await interaction.followup.send(msg, ephemeral=True)
                     LOG.error(msg)
                     return
-
-        today = datetime.datetime.now(self.JST).date()
-        # dateの確認&変換
-        if re.match(r'[0-9]{4}-[0-9]{1,2}-[0-9]{1,2}', date) \
-        or re.match(r'[0-9]{4}/[0-9]{1,2}/[0-9]{1,2}', date) \
-        or re.match(r'[0-9]{8}', date):
-            pass
-        elif re.match(r'^[0-9]{1,2}-[0-9]{1,2}', date):
-            date = f'{today.year}-{date}'
-        elif re.match(r'[0-9]{1,2}/[0-9]{1,2}', date):
-            date = f'{today.year}/{date}'
-        elif re.match(r'[0-9]{4}', date):
-            date = f'{today.year}{date}'
-        # エイリアス(特定の文字列の場合、日付に変換)
-        elif date.lower().startswith('t'):
-            date = today
-        elif re.match(self.NUM_1to3keta, date):
-            date = today + relativedelta(days=+int(date))
-
-        # 時間の変換
-        now_time = datetime.datetime.now(self.JST)
-        m_hours = re.match('^([0-9]{1,3})h$', time)
-        m_minutes = re.match('^([0-9]{1,4})mi$', time)
-        m_normal = re.match('^([0-9]{1,2}:[0-9]{1,2})$', time)
-        if m_hours:
-            result_time = now_time + datetime.timedelta(hours=int(m_hours.group(1)))
-            time = result_time.strftime('%H:%M')
-        elif m_minutes:
-            result_time = now_time + datetime.timedelta(minutes=int(m_minutes.group(1)))
-            time = result_time.strftime('%H:%M')
-        elif m_normal:
-            pass
-        else:
-            error_message = '不正な時間のため、リマインドを登録できませんでした'
-            LOG.info(error_message)
-            await interaction.followup.send(error_message, ephemeral=True)
-            return
-
-        # リマインド日時への変換
-        remind_datetime = None
-        try:
-            remind_datetime = dateutil.parser.parse(
-                f'{date} {time} +0900 (JST)', yearfirst=True)
-        except ValueError as e:
-            error_message = '不正な日時のため、リマインドを登録できませんでした'
-            LOG.info(error_message)
-            LOG.info(e)
-            await interaction.followup.send(error_message, ephemeral=True)
-            return
-
-        status = self.remind.STATUS_PROGRESS
-
-        # 繰り返し間隔の設定
-        repeat_flg = '0'
-        if repeat_interval:
-            # 間隔設定のチェック
-            now = datetime.datetime.now(self.JST)
-            next_remind_datetime = self.check_next_reminder_date(remind_datetime, repeat_interval, now)
-            if next_remind_datetime is None:
-                error_message = '繰り返し間隔が不正のため、リマインドを登録できませんでした'
-                LOG.info(error_message)
-                await interaction.followup.send(error_message, ephemeral=True)
-                return
-            repeat_flg  = '1'
-
-        repeat_count = 1
 
         # silentの設定(silentならこっそり先頭に@silent付与)
         if silent_mode:
