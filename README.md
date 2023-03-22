@@ -7,6 +7,9 @@
 - 以下の招待リンクからお試しできます
   - 招待リンク: <https://discord.com/api/oauth2/authorize?client_id=873515660674756639&permissions=2147723280&scope=bot%20applications.commands>
   - 止まってたりしたらこっそり教えてください(その前に、`/remind-task-check`で直るかもしれません)
+- 上記Botの運営でお金がかかるので、[PIXIV FANBOXで支援を募ってみる](https://marukot-chan.fanbox.cc/posts/5541410)ことにしました
+  - とくに支援しなくても全機能使えますが、支援してくださったらサーバーをクラウドにする等できるかもしれません
+  - 支援がない場合でも可能な限り運営しますが、いつでも停止/一時停止される可能性があります
 
 ## 機能
 
