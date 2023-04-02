@@ -15,6 +15,7 @@ class Remind:
     STATUS_CANCELED = 'Canceled'
     STATUS_PROGRESS = 'Progress'
     STATUS_ERROR = 'Error'
+    STATUS_SKIPPED = 'Skipped'
     JST = timezone(timedelta(hours=+9), 'JST')
     # 環境変数REMIND_CONTROL_CHANNELにあれば、リマインドの管理先としてそちらの名前を使う(複数のリマインダーBotがあって競合するときに使用)
     if settings.REMIND_CONTROL_CHANNEL_NAME:

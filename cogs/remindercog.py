@@ -19,6 +19,7 @@ class ReminderCog(commands.Cog):
     JST = timezone(timedelta(hours=9), 'JST')
     NUM_1to3keta = '^[0-9]{1,3}$'
     SHOW_ME = '自分のみ'
+    NOT_SILENT = 'ふつう'
 
     # ReminderCogクラスのコンストラクタ。Botを受取り、インスタンス変数として保持。
     def __init__(self, bot):
@@ -54,15 +55,20 @@ class ReminderCog(commands.Cog):
         for remind in self.remind.remind_rows:
             remind_datetime = dateutil.parser.parse(f'{remind[1]} +0900 (JST)',
                                                     yearfirst=True)
+            # リマインドを発動
             if remind_datetime <= now:
-                # リマインドを発動
+                # silentの設定
+                silent_flg = False
                 # メッセージ作成
                 msg = re.sub(r'<br>|[\[\(【<]改行[\)\]」】>]|@{3}', '\n', remind[5])
+                if re.search('@silent', msg, flags=re.IGNORECASE):
+                    msg = re.sub(r' *@silent *', '', msg, flags=re.IGNORECASE)
+                    silent_flg = True
                 # DMの対応
                 if remind[2] is None:
                     channel = await self.create_dm(remind[3])
                     try:
-                        remind_msg = await channel.send(msg)
+                        remind_msg = await channel.send(msg, silent=silent_flg)
                     except discord.errors.Forbidden:
                         msg = f'＊＊＊{remind[2]}のDMへの投稿に失敗しました！＊＊＊'
                         LOG.error(msg)
@@ -88,7 +94,7 @@ class ReminderCog(commands.Cog):
                     # チャンネルへの投稿
                     if channel is not None:
                         try:
-                            remind_msg = await channel.send(msg)
+                            remind_msg = await channel.send(msg, silent=silent_flg)
                         except:
                             msg = f'＊＊＊{remind[2]}のチャンネルへの投稿に失敗しました！＊＊＊'
                             LOG.error(msg)
@@ -118,7 +124,7 @@ class ReminderCog(commands.Cog):
                             thread = guild.get_channel_or_thread(remind[4])
                             if thread is None:
                                 thread = await guild.fetch_channel(remind[4])
-                            remind_msg = await thread.send(msg)
+                            remind_msg = await thread.send(msg, silent=silent_flg)
                         except:
                             msg = f'＊＊＊{remind[2]}のスレッド({remind[4]})への投稿に失敗しました！＊＊＊'
                             LOG.error(msg)
@@ -168,28 +174,17 @@ class ReminderCog(commands.Cog):
 
                     # 繰り返し回数のチェック
                     repeat_count = remind[7] + 1
-                    remind_repeat_max_str = str(remind[8])
-                    if remind[8] is None or (remind_repeat_max_str.isdecimal() and repeat_count < remind[8]):
-                        repeat_flg = '1'
-                    elif remind_repeat_max_str.isdecimal() and repeat_count > remind[8]:
-                        LOG.warning(f'No.{remind[0]}のrepeat_max_count({remind_repeat_max_str})を超えているため、追加をしません。')
+                    repeat_flg = self.check_repeat_num_and_calc(remind, repeat_count)
+                    if repeat_flg == 'NG':
                         continue
-                    else:
-                        repeat_flg = '0'
-                        if not remind_repeat_max_str.isdecimal():
-                            LOG.warning(f'繰り返し上限に数字以外が登録されました。remind[8]は{remind_repeat_max_str}')
 
                     # 繰り返し時のメッセージを変更(最後の行がURLの場合は繰り返し番号をつけない)
-                    last_remind_message = re.sub('\(\d+\)','', remind[5])
-                    last_line_url = re.search(r'https?://[a-zA-Z0-9/:%#\$&?()~.=+_-]+\Z', remind[5])
-                    remind_message =  remind[5]
-                    if repeat_count > 1 and last_line_url is None:
-                        remind_message = f'{last_remind_message}({repeat_count})'
+                    remind_message = self.check_message_last_line_is_url(remind, repeat_count)
 
                     id = await self.remind.make(remind[2], remind[3], next_remind_datetime, remind_message, remind[4], status, repeat_flg,
                         remind[10], repeat_count, remind[8])
                     try:
-                        await remind_msg.reply(f'次回のリマインドを登録しました(No.{id})')
+                        await remind_msg.reply(f'次回のリマインドを登録しました(No.{id})', silent=True)
                     except:
                         # 投稿に失敗した場合は登録を削除してしまう
                         await self.remind.update_status(id, remind[2], self.remind.STATUS_ERROR)
@@ -206,13 +201,15 @@ class ReminderCog(commands.Cog):
     @app_commands.describe(
         time='時間(hh24:mi形式)、もしくは、xxh(xxは数字(0-9)。xx時間後)、xxmi(xx分後)')
     @app_commands.describe(
-        message='メッセージ(<br>か@@@などで改行。メンションは通常のメッセージのように @xxxx と書く)')
+        message='メッセージ(<br>か@@@などで改行。メンションは通常のメッセージのように @xxxx と書く。@silentでこっそり)')
     @app_commands.describe(
         repeat_interval='繰り返し間隔(数字+英字を付与：分(mi)/時間(h)/日(d)/週(w)/月(m)/年(y)か、特殊(平日/休日/月初/月末/曜日文字列(「月水」など)))')
     @app_commands.describe(
         repeat_max_count='繰り返し最大数(設定がない場合、ずっと繰り返されます)')
     @app_commands.describe(
         channel='リマインドを投稿するチャンネル(#general等。「DM」でBotとのDMへ登録されます。未指定の場合はリマインド登録したチャンネルに投稿)')
+    @app_commands.describe(
+        silent='こっそり送信(メッセージに@silentでも可)')
     @app_commands.describe(
         reply_is_hidden='Botの実行結果を全員に見せるどうか(リマインド自体は普通です/他の人にもリマインドを使わせたい場合、全員に見せる方がオススメです))')
     async def _remind_make(self,
@@ -223,11 +220,52 @@ class ReminderCog(commands.Cog):
                         repeat_interval: str = None,
                         repeat_max_count: app_commands.Range[int, 1, 999] = None,
                         channel: str = None,
+                        silent: Literal['ふつう', 'こっそり'] = NOT_SILENT,
                         reply_is_hidden: Literal['自分のみ', '全員に見せる'] = SHOW_ME):
         LOG.info('remindをmakeするぜ！')
         hidden = True if reply_is_hidden == self.SHOW_ME else False
+        silent_mode = True if silent != self.NOT_SILENT else False
         self.check_printer_is_running()
         await interaction.response.defer(ephemeral = hidden)
+
+        # dateの確認&変換
+        date = self.check_date_and_convert(date)
+        # 時間の変換
+        time = self.check_time_and_convert(time)
+        if time == 'NG':
+            error_message = '不正な時間のため、リマインドを登録できませんでした'
+            LOG.info(error_message)
+            await interaction.followup.send(error_message, ephemeral=True)
+            return
+
+        # リマインド日時への変換
+        remind_datetime = None
+        try:
+            remind_datetime = dateutil.parser.parse(
+                f'{date} {time} +0900 (JST)', yearfirst=True)
+        except ValueError as e:
+            error_message = '不正な日時のため、リマインドを登録できませんでした'
+            LOG.info(error_message)
+            LOG.info(e)
+            await interaction.followup.send(error_message, ephemeral=True)
+            return
+
+        status = self.remind.STATUS_PROGRESS
+
+        # 繰り返し間隔の設定
+        repeat_flg = '0'
+        if repeat_interval:
+            # 間隔設定のチェック
+            now = datetime.datetime.now(self.JST)
+            next_remind_datetime = self.check_next_reminder_date(remind_datetime, repeat_interval, now)
+            if next_remind_datetime is None:
+                error_message = '繰り返し間隔が不正のため、リマインドを登録できませんでした'
+                LOG.info(error_message)
+                await interaction.followup.send(error_message, ephemeral=True)
+                return
+            repeat_flg  = '1'
+
+        repeat_count = 1
 
         # ギルドの設定
         if interaction.guild is not None:
@@ -256,7 +294,7 @@ class ReminderCog(commands.Cog):
                 dm_channel = await self.create_dm(interaction.user.id)
                 try:
                     # await dm_channel.typing() # typingで送信できるかチェックできたら嬉しかったけれど、これじゃチェックできなかった...
-                    await dm_channel.send(content='リマインドできるか事前チェックです...。数秒後に消えます', delete_after=3) # 実際に送信してみて、DMできるかチェックする
+                    await dm_channel.send(content='リマインドできるか事前チェックです...。数秒後に消えます', delete_after=3, silent=True) # 実際に送信してみて、DMできるかチェックする
                 except:
                     msg = 'リマインド登録に失敗しました。DM(ダイレクトメッセージ)できません。\nこのBotのあるサーバーの「プライバシー設定」で「サーバーにいるメンバーからのダイレクトメッセージを許可する」をONにしてください。」'
                     await interaction.followup.send(msg, ephemeral=True)
@@ -293,83 +331,20 @@ class ReminderCog(commands.Cog):
         if guild_id is not None:
             channel = discord.utils.get(interaction.guild.text_channels, id=channel_id)
             try:
-                await channel.send(content='リマインドできるか事前チェックです...。数秒後に消えます', delete_after=3)
+                await channel.send(content='リマインドできるか事前チェックです...。数秒後に消えます', delete_after=3, silent=True)
             except:
                 try:
                     thread = discord.utils.get(interaction.guild.threads, id=channel_id)
-                    await thread.send(content='リマインドできるか事前チェックです...。数秒後に消えます', delete_after=3)
+                    await thread.send(content='リマインドできるか事前チェックです...。数秒後に消えます', delete_after=3, silent=True)
                 except:
                     msg = 'リマインド登録に失敗しました。Botは指定されたチャンネルにメッセージ送信できません。\n送信先のチャンネルで、このBotのメッセージ送信権限を許可してください。'
                     await interaction.followup.send(msg, ephemeral=True)
                     LOG.error(msg)
                     return
 
-        today = datetime.datetime.now(self.JST).date()
-        # dateの確認&変換
-        if re.match(r'[0-9]{4}-[0-9]{1,2}-[0-9]{1,2}', date) \
-        or re.match(r'[0-9]{4}/[0-9]{1,2}/[0-9]{1,2}', date) \
-        or re.match(r'[0-9]{8}', date):
-            pass
-        elif re.match(r'^[0-9]{1,2}-[0-9]{1,2}', date):
-            date = f'{today.year}-{date}'
-        elif re.match(r'[0-9]{1,2}/[0-9]{1,2}', date):
-            date = f'{today.year}/{date}'
-        elif re.match(r'[0-9]{4}', date):
-            date = f'{today.year}{date}'
-        # エイリアス(特定の文字列の場合、日付に変換)
-        elif date.lower().startswith('t'):
-            date = today
-        elif re.match(self.NUM_1to3keta, date):
-            date = today + relativedelta(days=+int(date))
-
-        # 時間の変換
-        now_time = datetime.datetime.now(self.JST)
-        m_hours = re.match('^([0-9]{1,3})h$', time)
-        m_minutes = re.match('^([0-9]{1,4})mi$', time)
-        m_normal = re.match('^([0-9]{1,2}:[0-9]{1,2})$', time)
-        if m_hours:
-            result_time = now_time + datetime.timedelta(hours=int(m_hours.group(1)))
-            time = result_time.strftime('%H:%M')
-        elif m_minutes:
-            result_time = now_time + datetime.timedelta(minutes=int(m_minutes.group(1)))
-            time = result_time.strftime('%H:%M')
-        elif m_normal:
-            pass
-        else:
-            error_message = '不正な時間のため、リマインドを登録できませんでした'
-            LOG.info(error_message)
-            await interaction.followup.send(error_message, ephemeral=True)
-            return
-
-        # リマインド日時への変換
-        remind_datetime = None
-        try:
-            remind_datetime = dateutil.parser.parse(
-                f'{date} {time} +0900 (JST)', yearfirst=True)
-        except ValueError as e:
-            error_message = '不正な日時のため、リマインドを登録できませんでした'
-            LOG.info(error_message)
-            LOG.info(e)
-            await interaction.followup.send(error_message, ephemeral=True)
-            return
-
-        status = self.remind.STATUS_PROGRESS
-
-        # 繰り返し間隔の設定
-        repeat_flg = '0'
-        if repeat_interval:
-            # 間隔設定のチェック
-            now = datetime.datetime.now(self.JST)
-            next_remind_datetime = self.check_next_reminder_date(remind_datetime, repeat_interval, now)
-            if next_remind_datetime is None:
-                error_message = '繰り返し間隔が不正のため、リマインドを登録できませんでした'
-                LOG.info(error_message)
-                await interaction.followup.send(error_message, ephemeral=True)
-                return
-            repeat_flg  = '1'
-
-        repeat_count = 1
-
+        # silentの設定(silentならこっそり先頭に@silent付与)
+        if silent_mode:
+            message = '@silent ' + message
         # 実際の処理(remind.pyでやる)
         try:
             id = await self.remind.make(guild_id, interaction.user.id, remind_datetime, message, channel_id, status, repeat_flg,
@@ -420,6 +395,115 @@ class ReminderCog(commands.Cog):
         LOG.info(cancel_msg)
 
     @app_commands.command(
+        name='remind-skip',
+        description='remindをスキップする。日付、時間未指定の場合は次回をスキップ')
+    @app_commands.describe(
+        skip_no='スキップするリマインドの番号(No)')
+    @app_commands.describe(
+        next_date='リマインド再開日付。日付(mm/dd形式)、もしくは、何日後かの数字1桁(0-9)。年がある場合はyyyy/mm/dd形式(yyyy-mm-dd形式も可)')
+    @app_commands.describe(
+        next_time='リマインド再開時間。時間(hh24:mi形式)、もしくは、xxh(xxは数字(0-9)。xx時間後)、xxmi(xx分後)')
+    @app_commands.describe(
+        reply_is_hidden='Botの実行結果を全員に見せるどうか(リマインド自体は普通です/他の人にもリマインドを使わせたい場合、全員に見せる方がオススメです))')
+    async def remind_skip(self,
+                        interaction: discord.Interaction,
+                        skip_no: app_commands.Range[int, 1, 999999999999],
+                        next_date: str = None,
+                        next_time: str = None,
+                        reply_is_hidden: Literal['自分のみ', '全員に見せる'] = SHOW_ME):
+        LOG.info('remindをskipするぜ！')
+        hidden = True if reply_is_hidden == self.SHOW_ME else False
+        self.check_printer_is_running()
+        await interaction.response.defer(ephemeral = hidden, thinking=False)
+
+        # コマンド実行者が指定したNoのリマインドを持っているか、繰り返し対象かチェック
+        id = int(skip_no)
+        row = self.remind.get(interaction, id)
+        if row is None:
+            skip_no_is_none_msg = 'リマインドをスキップできませんでした(Noが違う可能性があります)'
+            await interaction.followup.send(skip_no_is_none_msg, ephemeral=True)
+            LOG.info(skip_no_is_none_msg)
+            return
+        elif row[9] != '1':
+            skip_no_is_wrong_msg = 'リマインドが繰り返しされていないため、スキップできませんでした(Noが違う可能性があります)'
+            await interaction.followup.send(skip_no_is_wrong_msg, ephemeral=True)
+            LOG.info(skip_no_is_wrong_msg)
+            return
+
+        # 添付する際にギルドIDが必要なので準備する(DMの場合はNone(デフォルトのギルドへ登録する))
+        guild_id = interaction.guild.id if interaction.guild is not None else None
+
+        # 日付、時間が両方とも未指定の場合は次回スキップとみなす(時間に1mが指定されているものとする)
+        if next_date is None and next_time is None:
+            next_time = '1mi'
+
+        # リマインド日付の変換
+        remind_datetime = None
+        try:
+            remind_datetime = dateutil.parser.parse(
+                f'{row[1]} +0900 (JST)', yearfirst=True)
+        except ValueError as e:
+            LOG.info(error_message)
+            LOG.info(e)
+            await interaction.followup.send(error_message, ephemeral=True)
+            return
+
+        # dateの確認&変換
+        if next_date is None:
+            next_date = remind_datetime.strftime('%Y-%m-%d')
+        date = self.check_date_and_convert(next_date, remind_datetime)
+        # 時間の変換
+        if next_time is None:
+            next_time = remind_datetime.strftime('%H:%M')
+        time = self.check_time_and_convert(next_time, remind_datetime)
+        error_message = '不正な時間のため、スキップできませんでした'
+        if time == 'NG':
+            LOG.info(error_message)
+            await interaction.followup.send(error_message, ephemeral=True)
+            return
+
+        # リマインド日時への変換
+        next_remind_datetime = None
+        try:
+            next_remind_datetime = dateutil.parser.parse(
+                f'{date} {time} +0900 (JST)', yearfirst=True)
+        except ValueError as e:
+            LOG.info(error_message)
+            LOG.info(e)
+            await interaction.followup.send(error_message, ephemeral=True)
+            return
+
+        # 繰り返し回数のチェック
+        repeat_count = row[7] + 1
+        repeat_flg = self.check_repeat_num_and_calc(row, repeat_count)
+        if repeat_flg == 'NG':
+            error_message = '繰り返し回数で不正な状態が見つかったため、スキップできませんでした'
+            LOG.info(error_message)
+            await interaction.followup.send(error_message, ephemeral=True)
+            return
+
+        # リマインドをスキップ
+        try:
+            await self.remind.update_status(id, guild_id, self.remind.STATUS_SKIPPED)
+        except:
+            LOG.warning('コマンドremind_skip中に失敗(おそらく添付用チャンネルの作成、または、添付に失敗)')
+
+        # 繰り返し時のメッセージを変更(最後の行がURLの場合は繰り返し番号をつけない)
+        remind_message = self.check_message_last_line_is_url(row, repeat_count)
+        display_next_remind_datetime = next_remind_datetime.strftime('%Y/%m/%d(%a) %H:%M:%S')
+
+        id = await self.remind.make(row[2], row[3], next_remind_datetime, remind_message, row[4], self.remind.STATUS_PROGRESS, repeat_flg,
+            row[10], repeat_count, row[8])
+        skip_msg = f'リマインドを1回スキップしました(No.{skip_no})\n次回のリマインドを登録しました(No.{id})\n再開日時: {display_next_remind_datetime}'
+        try:
+            await interaction.followup.send(skip_msg, ephemeral = hidden)
+            LOG.info(skip_msg)
+        except:
+            # 投稿に失敗した場合は登録を削除してしまう
+            await self.remind.update_status(id, row[2], self.remind.STATUS_ERROR)
+            LOG.error(f'channelがないので、メッセージ送れませんでした！(No.{id})')
+
+    @app_commands.command(
         name='remind-list',
         description='remindを確認する')
     @app_commands.describe(
@@ -430,7 +514,7 @@ class ReminderCog(commands.Cog):
         reply_is_hidden='Botの実行結果を全員に見せるどうか(リマインド自体は普通です/他の人にもリマインドを使わせたい場合、全員に見せる方がオススメです))')
     async def remind_list(self,
                         interaction: discord.Interaction,
-                        status: Literal['実行予定のリマインドリスト(デフォルト)', 'キャンセルしたリマインドリスト', '終了したリマインドリスト', 'エラーになったリマインドリスト'] = '実行予定のリマインドリスト(デフォルト)',
+                        status: Literal['実行予定のリマインドリスト(デフォルト)', 'キャンセルしたリマインドリスト', 'スキップしたリマインドリスト', '終了したリマインドリスト', 'エラーになったリマインドリスト'] = '実行予定のリマインドリスト(デフォルト)',
                         filter: str = None,
                         reply_is_hidden: Literal['自分のみ', '全員に見せる'] = SHOW_ME):
         LOG.info('remindをlistするぜ！')
@@ -456,7 +540,7 @@ class ReminderCog(commands.Cog):
     @app_commands.checks.has_permissions(administrator=True)
     async def _remind_list_guild_all(self,
                                     interaction: discord.Interaction,
-                                    status: Literal['実行予定のリマインドリスト(デフォルト)', 'キャンセルしたリマインドリスト', '終了したリマインドリスト', 'エラーになったリマインドリスト'] = '実行予定のリマインドリスト(デフォルト)',
+                                    status: Literal['実行予定のリマインドリスト(デフォルト)', 'キャンセルしたリマインドリスト', 'スキップしたリマインドリスト', '終了したリマインドリスト', 'エラーになったリマインドリスト'] = '実行予定のリマインドリスト(デフォルト)',
                                     filter: str = None,
                                     reply_is_hidden: Literal['自分のみ', '全員に見せる'] = SHOW_ME):
         LOG.info('remindをlist(guild)するぜ！')
@@ -483,7 +567,7 @@ class ReminderCog(commands.Cog):
     @app_commands.check(check_on_dm)
     async def _remind_list_all(self,
                             interaction: discord.Interaction,
-                            status: Literal['実行予定のリマインドリスト(デフォルト)', 'キャンセルしたリマインドリスト', '終了したリマインドリスト', 'エラーになったリマインドリスト'] = '実行予定のリマインドリスト(デフォルト)',
+                            status: Literal['実行予定のリマインドリスト(デフォルト)', 'キャンセルしたリマインドリスト', 'スキップしたリマインドリスト', '終了したリマインドリスト', 'エラーになったリマインドリスト'] = '実行予定のリマインドリスト(デフォルト)',
                             filter: str = None,
                             reply_is_hidden: Literal['自分のみ', '全員に見せる'] = SHOW_ME):
         if interaction.user != self.info.owner:
@@ -655,10 +739,73 @@ class ReminderCog(commands.Cog):
             LOG.info(msg)
             self.printer.start()
 
+    def check_date_and_convert(self, date:str, base_date=None):
+        if base_date is None:
+            base_date = datetime.datetime.now(self.JST).date()
+        if re.match(r'[0-9]{4}-[0-9]{1,2}-[0-9]{1,2}', date) \
+        or re.match(r'[0-9]{4}/[0-9]{1,2}/[0-9]{1,2}', date) \
+        or re.match(r'[0-9]{8}', date):
+            pass
+        elif re.match(r'^[0-9]{1,2}-[0-9]{1,2}', date):
+            date = f'{base_date.year}-{date}'
+        elif re.match(r'[0-9]{1,2}/[0-9]{1,2}', date):
+            date = f'{base_date.year}/{date}'
+        elif re.match(r'[0-9]{4}', date):
+            date = f'{base_date.year}{date}'
+        # エイリアス(特定の文字列の場合、日付に変換)
+        elif date.lower().startswith('t'):
+            date = base_date
+        elif re.match(self.NUM_1to3keta, date):
+            date = base_date + relativedelta(days=+int(date))
+        return date
+
+    def check_time_and_convert(self, time:str, base_time=None):
+        if base_time is None:
+            base_time = datetime.datetime.now(self.JST)
+        m_hours = re.match('^([0-9]{1,3})h$', time)
+        m_minutes = re.match('^([0-9]{1,4})mi$', time)
+        m_normal = re.match('^([0-9]{1,2}:[0-9]{1,2})$', time)
+        if time == '0':
+            time = base_time.strftime('%H:%M')
+        elif m_hours:
+            result_time = base_time + datetime.timedelta(hours=int(m_hours.group(1)))
+            time = result_time.strftime('%H:%M')
+        elif m_minutes:
+            result_time = base_time + datetime.timedelta(minutes=int(m_minutes.group(1)))
+            time = result_time.strftime('%H:%M')
+        elif m_normal:
+            pass
+        else:
+            return 'NG'
+        return time
+
+    def check_repeat_num_and_calc(self, remind, repeat_count):
+        remind_repeat_max_str = str(remind[8])
+        if remind[8] is None or (remind_repeat_max_str.isdecimal() and repeat_count < remind[8]):
+            repeat_flg = '1'
+        elif remind_repeat_max_str.isdecimal() and repeat_count > remind[8]:
+            LOG.warning(f'No.{remind[0]}のrepeat_max_count({remind_repeat_max_str})を超えているため、追加をしません。')
+            repeat_flg = 'NG'
+        else:
+            repeat_flg = '0'
+            if not remind_repeat_max_str.isdecimal():
+                LOG.warning(f'繰り返し上限に数字以外が登録されました。remind[8]は{remind_repeat_max_str}')
+        return repeat_flg
+
+    def check_message_last_line_is_url(self, remind, repeat_count):
+        last_remind_message = re.sub('\(\d+\)','', remind[5])
+        last_line_url = re.search(r'https?://[a-zA-Z0-9/:%#\$&?()~.=+_-]+\Z', remind[5])
+        remind_message =  remind[5]
+        if repeat_count > 1 and last_line_url is None:
+            remind_message = f'{last_remind_message}({repeat_count})'
+        return remind_message
+
     def get_command_status(self, status):
         command_status = self.remind.STATUS_PROGRESS
         if status == 'キャンセルしたリマインドリスト':
             command_status = self.remind.STATUS_CANCELED
+        if status == 'スキップしたリマインドリスト':
+            command_status = self.remind.STATUS_SKIPPED
         elif status == '終了したリマインドリスト':
             command_status = self.remind.STATUS_FINISHED
         elif status == 'エラーになったリマインドリスト':
