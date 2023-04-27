@@ -70,6 +70,9 @@
     - メンションしたい場合、通常のメッセージと同様に、@xxxx形式で入力してください（リマインド時にメンションされます）
     - こっそり送りたい場合、`@silent`としてもよいです([v1.0.1](https://github.com/tetsuya-ki/discord-reminderbot/releases/tag/v1.0.1)で追加)
       - オプションが欲しい人のために、別途オプションでも`silent`できます(こっそりメッセージの先頭につけるだけですが……)
+    - スタンプ(Stickers)があればスタンプに変換([v1.0.3](https://github.com/tetsuya-ki/discord-reminderbot/releases/tag/v1.0.3)で追加)
+      - :ganbare:みたいにメッセージに紛れ込ませてください(Discordの予測変換的なのでやると、Botにいきませんので注意)
+      - 最大3つ付与可能(スタンプの順番はテキトーです)
 
 - オプション
   - repeat_interval(繰り返し間隔)

@@ -64,6 +64,18 @@ class ReminderCog(commands.Cog):
                 if re.search('@silent', msg, flags=re.IGNORECASE):
                     msg = re.sub(r' *@silent *', '', msg, flags=re.IGNORECASE)
                     silent_flg = True
+                # ギルド対象、かつ、:xxxx:である場合、Sticker(スタンプ)の取得
+                sticker_list = []
+                if remind[2] and re.search(':\w+:', msg):
+                    guild = await self.bot.fetch_guild(remind[2])
+                    # ギルドのStickerの数だけ繰り返す
+                    for sticker in guild.stickers:
+                        # 文章にStickerが含まれていれば、Stickerリストに追加し、文章から削除
+                        if re.search(f':{sticker.name}:', msg, flags=re.IGNORECASE):
+                            sticker_list.append(sticker)
+                            msg = re.sub(f' *:{sticker.name}: *', '', msg, flags=re.IGNORECASE)
+                            if len(sticker_list) >= 3:
+                                break
                 # DMの対応
                 if remind[2] is None:
                     channel = await self.create_dm(remind[3])
@@ -94,7 +106,7 @@ class ReminderCog(commands.Cog):
                     # チャンネルへの投稿
                     if channel is not None:
                         try:
-                            remind_msg = await channel.send(msg, silent=silent_flg)
+                            remind_msg = await channel.send(msg, silent=silent_flg, stickers=sticker_list)
                         except:
                             msg = f'＊＊＊{remind[2]}のチャンネルへの投稿に失敗しました！＊＊＊'
                             LOG.error(msg)
@@ -124,7 +136,7 @@ class ReminderCog(commands.Cog):
                             thread = guild.get_channel_or_thread(remind[4])
                             if thread is None:
                                 thread = await guild.fetch_channel(remind[4])
-                            remind_msg = await thread.send(msg, silent=silent_flg)
+                            remind_msg = await thread.send(msg, silent=silent_flg, stickers=sticker_list)
                         except:
                             msg = f'＊＊＊{remind[2]}のスレッド({remind[4]})への投稿に失敗しました！＊＊＊'
                             LOG.error(msg)
