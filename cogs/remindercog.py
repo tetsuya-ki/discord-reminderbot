@@ -73,7 +73,7 @@ class ReminderCog(commands.Cog):
                         # 文章にStickerが含まれていれば、Stickerリストに追加し、文章から削除
                         if re.search(f':{sticker.name}:', msg, flags=re.IGNORECASE):
                             sticker_list.append(sticker)
-                            msg = re.sub(f' *:{sticker.name}: *', '', msg, flags=re.IGNORECASE)
+                            msg = re.sub(f' *<?:{sticker.name}:(\d*)>? *', '', msg, flags=re.IGNORECASE)
                             if len(sticker_list) >= 3:
                                 break
                 # DMの対応
