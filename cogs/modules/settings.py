@@ -43,6 +43,7 @@ def split_guild_env(str):
 
 # 環境変数をファイルから読み込む
 load_dotenv(verbose=True)
+print(os.environ.pop('APPLICATION_ID', None))
 dotenv_path = join(dirname(__file__), 'files' + os.sep + '.env')
 load_dotenv(dotenv_path)
 
