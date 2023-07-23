@@ -36,6 +36,9 @@
         - 日付
         - メッセージ
         - 繰り返し設定
+        - ギルドID([v1.0.3](https://github.com/tetsuya-ki/discord-reminderbot/releases/tag/v1.0.3)で追加)
+        - メンバーID([v1.0.3](https://github.com/tetsuya-ki/discord-reminderbot/releases/tag/v1.0.3)で追加)
+        - チャンネルID([v1.0.3](https://github.com/tetsuya-ki/discord-reminderbot/releases/tag/v1.0.3)で追加)
     - [v1.0.0](https://github.com/tetsuya-ki/discord-reminderbot/releases/tag/v1.0.0)で追加
   - reply_is_hidden
     - 自分のみ
@@ -135,7 +138,7 @@
 - そのギルドで登録されているリマインドをすべて表示します
 - オプション
   - status
-    - 実行予定のリマインドリスト
+    - 実行予定のリマインドリスト(デフォルトと同じ)
       - 今後リマインドされるリストを表示します
     - キャンセルしたリマインドリスト
       - キャンセルされたリマインドリストを表示します
@@ -152,6 +155,9 @@
         - 日付
         - メッセージ
         - 繰り返し設定
+        - ギルドID([v1.0.3](https://github.com/tetsuya-ki/discord-reminderbot/releases/tag/v1.0.3)で追加)
+        - メンバーID([v1.0.3](https://github.com/tetsuya-ki/discord-reminderbot/releases/tag/v1.0.3)で追加)
+        - チャンネルID([v1.0.3](https://github.com/tetsuya-ki/discord-reminderbot/releases/tag/v1.0.3)で追加)
     - [v1.0.0](https://github.com/tetsuya-ki/discord-reminderbot/releases/tag/v1.0.0)で追加
   - reply_is_hidden
     - 自分のみ
@@ -165,7 +171,7 @@
 - Botに登録されているリマインドをすべて表示します
 - オプション
   - status
-    - 実行予定のリマインドリスト
+    - 実行予定のリマインドリスト(デフォルトと同じ)
       - 今後リマインドされるリストを表示します
     - キャンセルしたリマインドリスト
       - キャンセルされたリマインドリストを表示します
@@ -182,6 +188,9 @@
         - 日付
         - メッセージ
         - 繰り返し設定
+        - ギルドID([v1.0.3](https://github.com/tetsuya-ki/discord-reminderbot/releases/tag/v1.0.3)で追加)
+        - メンバーID([v1.0.3](https://github.com/tetsuya-ki/discord-reminderbot/releases/tag/v1.0.3)で追加)
+        - チャンネルID([v1.0.3](https://github.com/tetsuya-ki/discord-reminderbot/releases/tag/v1.0.3)で追加)
     - [v1.0.0](https://github.com/tetsuya-ki/discord-reminderbot/releases/tag/v1.0.0)で追加
   - reply_is_hidden
     - 自分のみ
