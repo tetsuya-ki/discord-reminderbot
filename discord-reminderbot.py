@@ -1,4 +1,3 @@
-from lib2to3.pgen2 import token
 from cogs.modules import settings
 from discord.ext import commands
 from logging import basicConfig, getLogger, StreamHandler, FileHandler, Formatter, NOTSET
