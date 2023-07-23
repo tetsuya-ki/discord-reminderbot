@@ -398,6 +398,20 @@ class Remind:
         self.encode()
         return row
 
+    def get_by_owner(self, id: int):
+        self.decode()
+        conn = sqlite3.connect(self.FILE_PATH)
+        with conn:
+            cur = conn.cursor()
+            select_sql = f'''select * from reminder_table where id = '{id}' '''
+            LOG.debug(select_sql)
+            cur.execute(select_sql)
+            row = cur.fetchone()
+            escaped_mention_text = '(データがありません)' if row is None else discord.utils.escape_mentions(str(row))
+            LOG.debug(escaped_mention_text)
+        self.encode()
+        return row
+
     async def delete_old_reminder(self, interaction: discord.Interaction):
         self.decode()
         conn = sqlite3.connect(self.FILE_PATH)

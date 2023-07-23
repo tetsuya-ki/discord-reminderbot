@@ -407,11 +407,31 @@ class ReminderCog(commands.Cog):
         # コマンド実行者が指定したNoのリマインドを持っているかチェック
         id = int(cancel_no)
         row = self.remind.get(interaction, id)
+        owner_flg = interaction.user == self.info.owner
+        dm_flg = interaction.guild is None
+        guild_admin_flg = interaction.user.guild_permissions.administrator if not dm_flg else False
+        cancel_id_is_none_msg = 'リマインドをキャンセルできませんでした(Noが違う可能性があります)'
+        cancel_msg = f'リマインドをキャンセルしました(No.{cancel_no})'
         if row is None:
-            cancel_id_is_none_msg = 'リマインドをキャンセルできませんでした(Noが違う可能性があります)'
-            await interaction.followup.send(cancel_id_is_none_msg, ephemeral=True)
-            LOG.info(cancel_id_is_none_msg)
-            return
+            if  not owner_flg and (not dm_flg and not guild_admin_flg):
+                # オーナー以外かギルドで管理者以外が実行(一般ユーザが実行し、対象が存在しないパターン)
+                await interaction.followup.send(cancel_id_is_none_msg, ephemeral=True)
+                LOG.info(cancel_id_is_none_msg)
+                return
+            else:
+                row = self.remind.get_by_owner(id)
+                if row is None or (dm_flg and not owner_flg):
+                    # 全部みたけどない OR DMでBot管理者以外が実行
+                    await interaction.followup.send(cancel_id_is_none_msg, ephemeral=True)
+                    LOG.info(cancel_id_is_none_msg)
+                    return
+                elif not dm_flg and guild_admin_flg:
+                    # ギルドで管理者が実行(ギルドチェックが必要)
+                    if str(row[2]) == str(interaction.guild.id):
+                        cancel_msg = 'ギルド管理者が' + cancel_msg
+                else:
+                    # Bot管理者が実行
+                    cancel_msg = 'Botオーナーが' + cancel_msg
 
         # 添付する際にギルドIDが必要なので準備する(DMの場合はNone(デフォルトのギルドへ登録する))
         guild_id = interaction.guild.id if interaction.guild is not None else None
@@ -421,7 +441,6 @@ class ReminderCog(commands.Cog):
             await self.remind.update_status(id, guild_id, self.remind.STATUS_CANCELED)
         except:
             LOG.warning('コマンドremind_cancel中に失敗(おそらく添付用チャンネルの作成、または、添付に失敗)')
-        cancel_msg = f'リマインドをキャンセルしました(No.{cancel_no})'
 
         await interaction.followup.send(cancel_msg, ephemeral = hidden)
         LOG.info(cancel_msg)

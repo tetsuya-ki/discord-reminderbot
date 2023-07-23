@@ -120,11 +120,13 @@
 
 ### `/remind-cancel`
 
-- リマインドをキャンセルします
+- リマインドをキャンセルします([v1.0.3](https://github.com/tetsuya-ki/discord-reminderbot/releases/tag/v1.0.3)で仕様変更あり)
 - 必須のオプション(1つ)
   - cancel_no(キャンセルするリマインドのNo)
     - 数字
     - あなたが登録したリマインドのNoである必要があります（他人のリマインドはキャンセルできません）
+    - ただし、ギルド管理者の場合、ギルド内のリマインドもキャンセル可能([v1.0.3](https://github.com/tetsuya-ki/discord-reminderbot/releases/tag/v1.0.3)で変更)
+    - ただし、Botオーナーの場合、すべてのリマインドもキャンセル可能([v1.0.3](https://github.com/tetsuya-ki/discord-reminderbot/releases/tag/v1.0.3)で変更)
 - オプション
   - reply_is_hidden
     - 自分のみ
