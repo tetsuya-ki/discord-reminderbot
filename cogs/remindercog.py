@@ -67,15 +67,35 @@ class ReminderCog(commands.Cog):
                 # ギルド対象、かつ、:xxxx:である場合、Sticker(スタンプ)の取得
                 sticker_list = []
                 if remind[2] and re.search(':\w+:', msg):
-                    guild = await self.bot.fetch_guild(remind[2])
-                    # ギルドのStickerの数だけ繰り返す
-                    for sticker in guild.stickers:
-                        # 文章にStickerが含まれていれば、Stickerリストに追加し、文章から削除
-                        if re.search(f':{sticker.name}:', msg, flags=re.IGNORECASE):
-                            sticker_list.append(sticker)
-                            msg = re.sub(f' *<?:{sticker.name}:(\d*)>? *', '', msg, flags=re.IGNORECASE)
-                            if len(sticker_list) >= 3:
-                                break
+                    # Sticker取得のため、ギルドの取得
+                    try:
+                        guild = await self.bot.fetch_guild(remind[2])
+                        # ギルドのStickerの数だけ繰り返す
+                        for sticker in guild.stickers:
+                            # 文章にStickerが含まれていれば、Stickerリストに追加し、文章から削除
+                            if re.search(f':{sticker.name}:', msg, flags=re.IGNORECASE):
+                                sticker_list.append(sticker)
+                                msg = re.sub(f' *<?:{sticker.name}:(\d*)>? *', '', msg, flags=re.IGNORECASE)
+                                if len(sticker_list) >= 3:
+                                    break
+                    except:
+                        msg = f'＊＊＊ギルド:{remind[2]}の取得({remind[4]})に失敗しました！＊＊＊'
+                        LOG.error(msg)
+
+                        # リマインドを削除
+                        try:
+                            await self.remind.update_status(remind[0], remind[2], self.remind.STATUS_ERROR)
+                        except:
+                            LOG.warning('リマインドを削除(フェッチ失敗/CH)/update中に失敗(ギルド内チャンネルのフェッチに失敗)')
+                            continue
+                        # 通知失敗について連絡
+                        try:
+                            get_control_channel = discord.utils.get(self.bot.get_all_channels(),guild__id=remind[2],name=self.remind.REMIND_CONTROL_CHANNEL)
+                            remind_msg = await get_control_channel.send(f'@here No.{remind[0]}は権限不足などの原因でリマインドできませんでした。リマインドしたい場合は、投稿先チャンネルの設定見直しをお願いします\n> {remind[5]}')
+                        except:
+                            msg = f'＊＊＊さらに、{remind[2]}のチャンネル({self.remind.REMIND_CONTROL_CHANNEL})への投稿に失敗しました(フェッチ失敗投稿後)！＊＊＊'
+                            LOG.error(msg)
+                            continue
                 # DMの対応
                 if remind[2] is None:
                     channel = await self.create_dm(remind[3])
