@@ -260,6 +260,13 @@ class ReminderCog(commands.Cog):
         self.check_printer_is_running()
         await interaction.response.defer(ephemeral = hidden)
 
+        # BANチェック
+        if self.remind.check_deleted_member(interaction.user.id) > 0:
+            error_message = '不正な状態のため、リマインドを登録できませんでした'
+            LOG.info(error_message)
+            await interaction.followup.send(error_message, ephemeral=False)
+            return
+
         # dateの確認&変換
         date = self.check_date_and_convert(date)
         # 時間の変換
@@ -555,6 +562,88 @@ class ReminderCog(commands.Cog):
             LOG.error(f'channelがないので、メッセージ送れませんでした！(No.{id})')
 
     @app_commands.command(
+        name='remind-id-user-delete',
+        description='<注意>remindを作ったユーザーのものをすべて削除する(Botのオーナーのみ実行可能です！)')
+    @app_commands.describe(
+        delete_no='削除したいユーザーのリマインドの番号(No)')
+    @app_commands.describe(
+        reply_is_hidden='Botの実行結果を全員に見せるどうか(リマインド自体は普通です/他の人にもリマインドを使わせたい場合、全員に見せる方がオススメです))')
+    async def remind_id_user_delete(self,
+                        interaction: discord.Interaction,
+                        delete_no: app_commands.Range[int, 1, 999999999999],
+                        reply_is_hidden: Literal['自分のみ', '全員に見せる'] = SHOW_ME):
+        if interaction.user != self.info.owner:
+            await interaction.response.send_message('このコマンドはBotのオーナー以外は実行できません', ephemeral = True)
+            return
+        LOG.info('remindしたユーザーをdeleteするぜ！(owner)')
+        hidden = True if reply_is_hidden == self.SHOW_ME else False
+        self.check_printer_is_running()
+        await interaction.response.defer(ephemeral = hidden)
+
+        # 指定したNoのリマインドが存在するかチェック
+        id = int(delete_no)
+        row = self.remind.get_by_owner(id)
+        if row is None:
+            delete_id_is_none_msg = 'リマインド対象のユーザーの削除ができませんでした(Noが違う可能性があります)'
+            await interaction.followup.send(delete_id_is_none_msg, ephemeral=True)
+            LOG.info(delete_id_is_none_msg)
+            return
+
+        # 添付する際にギルドIDが必要なので準備する(DMの場合はNone(デフォルトのギルドへ登録する))
+        guild_id = interaction.guild.id if interaction.guild is not None else None
+
+        # リマインド削除(&BAN)
+        try:
+            await self.remind.delete_remind_by_user_id(row[3], guild_id)
+        except:
+            LOG.warning('コマンドremind_id_user_delete中に失敗(おそらく添付用チャンネルの作成、または、添付に失敗)')
+        delete_msg = f'リマインド対象のユーザーの削除を実施しました(No.{delete_no})'
+
+        await interaction.followup.send(delete_msg, ephemeral = hidden)
+        LOG.info(delete_msg)
+
+    @app_commands.command(
+        name='remind-id-user-recover',
+        description='<注意>削除されたユーザーを復活する(データは復活しません/Botのオーナーのみ実行可能です！)')
+    @app_commands.describe(
+        recover_no='復活させたいユーザーのリマインドの番号(No)')
+    @app_commands.describe(
+        reply_is_hidden='Botの実行結果を全員に見せるどうか(リマインド自体は普通です/他の人にもリマインドを使わせたい場合、全員に見せる方がオススメです))')
+    async def remind_id_user_recover(self,
+                        interaction: discord.Interaction,
+                        recover_no: app_commands.Range[int, 1, 999999999999],
+                        reply_is_hidden: Literal['自分のみ', '全員に見せる'] = SHOW_ME):
+        if interaction.user != self.info.owner:
+            await interaction.response.send_message('このコマンドはBotのオーナー以外は実行できません', ephemeral = True)
+            return
+        LOG.info('remindしたユーザーをrecoverするぜ！(owner)')
+        hidden = True if reply_is_hidden == self.SHOW_ME else False
+        self.check_printer_is_running()
+        await interaction.response.defer(ephemeral = hidden)
+
+        # 指定したNoのリマインド(DELETED)が存在するかチェック
+        id = int(recover_no)
+        row = self.remind.recovery_check(id)
+        if row is None:
+            recover_id_is_none_msg = 'リマインド対象のユーザーの復活ができませんでした(Noが違う可能性があります)'
+            await interaction.followup.send(recover_id_is_none_msg, ephemeral=True)
+            LOG.info(recover_id_is_none_msg)
+            return
+
+        # 添付する際にギルドIDが必要なので準備する(DMの場合はNone(デフォルトのギルドへ登録する))
+        guild_id = interaction.guild.id if interaction.guild is not None else None
+
+        # リマインドユーザーの復活
+        try:
+            await self.remind.recover_remind_by_user_id(row[3], guild_id)
+        except:
+            LOG.warning('コマンドremind_id_user_recover中に失敗(おそらく添付用チャンネルの作成、または、添付に失敗)')
+        recover_msg = f'リマインド対象のユーザーの復活を実施しました(No.{recover_no})'
+
+        await interaction.followup.send(recover_msg, ephemeral = hidden)
+        LOG.info(recover_msg)
+
+    @app_commands.command(
         name='remind-list',
         description='remindを確認する')
     @app_commands.describe(
@@ -591,7 +680,7 @@ class ReminderCog(commands.Cog):
     @app_commands.checks.has_permissions(administrator=True)
     async def _remind_list_guild_all(self,
                                     interaction: discord.Interaction,
-                                    status: Literal['実行予定のリマインドリスト(デフォルト)', 'キャンセルしたリマインドリスト', 'スキップしたリマインドリスト', '終了したリマインドリスト', 'エラーになったリマインドリスト'] = '実行予定のリマインドリスト(デフォルト)',
+                                    status: Literal['実行予定のリマインドリスト(デフォルト)', 'キャンセルしたリマインドリスト', 'スキップしたリマインドリスト', '終了したリマインドリスト', 'エラーになったリマインドリスト', '削除されたリマインドリスト', '復活されたリマインドリスト'] = '実行予定のリマインドリスト(デフォルト)',
                                     filter: str = None,
                                     reply_is_hidden: Literal['自分のみ', '全員に見せる'] = SHOW_ME):
         LOG.info('remindをlist(guild)するぜ！')
@@ -855,12 +944,16 @@ class ReminderCog(commands.Cog):
         command_status = self.remind.STATUS_PROGRESS
         if status == 'キャンセルしたリマインドリスト':
             command_status = self.remind.STATUS_CANCELED
-        if status == 'スキップしたリマインドリスト':
+        elif status == 'スキップしたリマインドリスト':
             command_status = self.remind.STATUS_SKIPPED
         elif status == '終了したリマインドリスト':
             command_status = self.remind.STATUS_FINISHED
         elif status == 'エラーになったリマインドリスト':
             command_status = self.remind.STATUS_ERROR
+        elif status == '削除されたリマインドリスト':
+            command_status = self.remind.STATUS_DELETED
+        elif status == '復活されたリマインドリスト':
+            command_status = self.remind.STATUS_RECOVERED
         return command_status
 
     async def create_dm(self, user_id):
