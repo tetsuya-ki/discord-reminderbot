@@ -64,6 +64,38 @@ class ReminderCog(commands.Cog):
                 if re.search('@silent', msg, flags=re.IGNORECASE):
                     msg = re.sub(r' *@silent *', '', msg, flags=re.IGNORECASE)
                     silent_flg = True
+                # ギルド対象、かつ、:xxxx:である場合、Sticker(スタンプ)の取得
+                sticker_list = []
+                if remind[2] and re.search(':\w+:', msg):
+                    # Sticker取得のため、ギルドの取得
+                    try:
+                        guild = await self.bot.fetch_guild(remind[2])
+                        # ギルドのStickerの数だけ繰り返す
+                        for sticker in guild.stickers:
+                            # 文章にStickerが含まれていれば、Stickerリストに追加し、文章から削除
+                            if re.search(f':{sticker.name}:', msg, flags=re.IGNORECASE):
+                                sticker_list.append(sticker)
+                                msg = re.sub(f' *<?:{sticker.name}:(\d*)>? *', '', msg, flags=re.IGNORECASE)
+                                if len(sticker_list) >= 3:
+                                    break
+                    except:
+                        msg = f'＊＊＊ギルド:{remind[2]}の取得({remind[4]})に失敗しました！＊＊＊'
+                        LOG.error(msg)
+
+                        # リマインドを削除
+                        try:
+                            await self.remind.update_status(remind[0], remind[2], self.remind.STATUS_ERROR)
+                        except:
+                            LOG.warning('リマインドを削除(フェッチ失敗/CH)/update中に失敗(ギルド内チャンネルのフェッチに失敗)')
+                            continue
+                        # 通知失敗について連絡
+                        try:
+                            get_control_channel = discord.utils.get(self.bot.get_all_channels(),guild__id=remind[2],name=self.remind.REMIND_CONTROL_CHANNEL)
+                            remind_msg = await get_control_channel.send(f'@here No.{remind[0]}は権限不足などの原因でリマインドできませんでした。リマインドしたい場合は、投稿先チャンネルの設定見直しをお願いします\n> {remind[5]}')
+                        except:
+                            msg = f'＊＊＊さらに、{remind[2]}のチャンネル({self.remind.REMIND_CONTROL_CHANNEL})への投稿に失敗しました(フェッチ失敗投稿後)！＊＊＊'
+                            LOG.error(msg)
+                            continue
                 # DMの対応
                 if remind[2] is None:
                     channel = await self.create_dm(remind[3])
@@ -94,7 +126,7 @@ class ReminderCog(commands.Cog):
                     # チャンネルへの投稿
                     if channel is not None:
                         try:
-                            remind_msg = await channel.send(msg, silent=silent_flg)
+                            remind_msg = await channel.send(msg, silent=silent_flg, stickers=sticker_list)
                         except:
                             msg = f'＊＊＊{remind[2]}のチャンネルへの投稿に失敗しました！＊＊＊'
                             LOG.error(msg)
@@ -124,7 +156,7 @@ class ReminderCog(commands.Cog):
                             thread = guild.get_channel_or_thread(remind[4])
                             if thread is None:
                                 thread = await guild.fetch_channel(remind[4])
-                            remind_msg = await thread.send(msg, silent=silent_flg)
+                            remind_msg = await thread.send(msg, silent=silent_flg, stickers=sticker_list)
                         except:
                             msg = f'＊＊＊{remind[2]}のスレッド({remind[4]})への投稿に失敗しました！＊＊＊'
                             LOG.error(msg)
@@ -375,11 +407,31 @@ class ReminderCog(commands.Cog):
         # コマンド実行者が指定したNoのリマインドを持っているかチェック
         id = int(cancel_no)
         row = self.remind.get(interaction, id)
+        owner_flg = interaction.user == self.info.owner
+        dm_flg = interaction.guild is None
+        guild_admin_flg = interaction.user.guild_permissions.administrator if not dm_flg else False
+        cancel_id_is_none_msg = 'リマインドをキャンセルできませんでした(Noが違う可能性があります)'
+        cancel_msg = f'リマインドをキャンセルしました(No.{cancel_no})'
         if row is None:
-            cancel_id_is_none_msg = 'リマインドをキャンセルできませんでした(Noが違う可能性があります)'
-            await interaction.followup.send(cancel_id_is_none_msg, ephemeral=True)
-            LOG.info(cancel_id_is_none_msg)
-            return
+            if  not owner_flg and (not dm_flg and not guild_admin_flg):
+                # オーナー以外かギルドで管理者以外が実行(一般ユーザが実行し、対象が存在しないパターン)
+                await interaction.followup.send(cancel_id_is_none_msg, ephemeral=True)
+                LOG.info(cancel_id_is_none_msg)
+                return
+            else:
+                row = self.remind.get_by_owner(id)
+                if row is None or (dm_flg and not owner_flg):
+                    # 全部みたけどない OR DMでBot管理者以外が実行
+                    await interaction.followup.send(cancel_id_is_none_msg, ephemeral=True)
+                    LOG.info(cancel_id_is_none_msg)
+                    return
+                elif not dm_flg and guild_admin_flg:
+                    # ギルドで管理者が実行(ギルドチェックが必要)
+                    if str(row[2]) == str(interaction.guild.id):
+                        cancel_msg = 'ギルド管理者が' + cancel_msg
+                else:
+                    # Bot管理者が実行
+                    cancel_msg = 'Botオーナーが' + cancel_msg
 
         # 添付する際にギルドIDが必要なので準備する(DMの場合はNone(デフォルトのギルドへ登録する))
         guild_id = interaction.guild.id if interaction.guild is not None else None
@@ -389,7 +441,6 @@ class ReminderCog(commands.Cog):
             await self.remind.update_status(id, guild_id, self.remind.STATUS_CANCELED)
         except:
             LOG.warning('コマンドremind_cancel中に失敗(おそらく添付用チャンネルの作成、または、添付に失敗)')
-        cancel_msg = f'リマインドをキャンセルしました(No.{cancel_no})'
 
         await interaction.followup.send(cancel_msg, ephemeral = hidden)
         LOG.info(cancel_msg)

@@ -36,6 +36,9 @@
         - 日付
         - メッセージ
         - 繰り返し設定
+        - ギルドID([v1.0.3](https://github.com/tetsuya-ki/discord-reminderbot/releases/tag/v1.0.3)で追加)
+        - メンバーID([v1.0.3](https://github.com/tetsuya-ki/discord-reminderbot/releases/tag/v1.0.3)で追加)
+        - チャンネルID([v1.0.3](https://github.com/tetsuya-ki/discord-reminderbot/releases/tag/v1.0.3)で追加)
     - [v1.0.0](https://github.com/tetsuya-ki/discord-reminderbot/releases/tag/v1.0.0)で追加
   - reply_is_hidden
     - 自分のみ
@@ -70,6 +73,9 @@
     - メンションしたい場合、通常のメッセージと同様に、@xxxx形式で入力してください（リマインド時にメンションされます）
     - こっそり送りたい場合、`@silent`としてもよいです([v1.0.1](https://github.com/tetsuya-ki/discord-reminderbot/releases/tag/v1.0.1)で追加)
       - オプションが欲しい人のために、別途オプションでも`silent`できます(こっそりメッセージの先頭につけるだけですが……)
+    - スタンプ(Stickers)があればスタンプに変換([v1.0.3](https://github.com/tetsuya-ki/discord-reminderbot/releases/tag/v1.0.3)で追加)
+      - :ganbare:みたいにメッセージに紛れ込ませてください(Discordの予測変換的なのでやると、Botにいきませんので注意)
+      - 最大3つ付与可能(スタンプの順番はテキトーです)
 
 - オプション
   - repeat_interval(繰り返し間隔)
@@ -114,11 +120,13 @@
 
 ### `/remind-cancel`
 
-- リマインドをキャンセルします
+- リマインドをキャンセルします([v1.0.3](https://github.com/tetsuya-ki/discord-reminderbot/releases/tag/v1.0.3)で仕様変更あり)
 - 必須のオプション(1つ)
   - cancel_no(キャンセルするリマインドのNo)
     - 数字
     - あなたが登録したリマインドのNoである必要があります（他人のリマインドはキャンセルできません）
+    - ただし、ギルド管理者の場合、ギルド内のリマインドもキャンセル可能([v1.0.3](https://github.com/tetsuya-ki/discord-reminderbot/releases/tag/v1.0.3)で変更)
+    - ただし、Botオーナーの場合、すべてのリマインドもキャンセル可能([v1.0.3](https://github.com/tetsuya-ki/discord-reminderbot/releases/tag/v1.0.3)で変更)
 - オプション
   - reply_is_hidden
     - 自分のみ
@@ -132,7 +140,7 @@
 - そのギルドで登録されているリマインドをすべて表示します
 - オプション
   - status
-    - 実行予定のリマインドリスト
+    - 実行予定のリマインドリスト(デフォルトと同じ)
       - 今後リマインドされるリストを表示します
     - キャンセルしたリマインドリスト
       - キャンセルされたリマインドリストを表示します
@@ -149,6 +157,9 @@
         - 日付
         - メッセージ
         - 繰り返し設定
+        - ギルドID([v1.0.3](https://github.com/tetsuya-ki/discord-reminderbot/releases/tag/v1.0.3)で追加)
+        - メンバーID([v1.0.3](https://github.com/tetsuya-ki/discord-reminderbot/releases/tag/v1.0.3)で追加)
+        - チャンネルID([v1.0.3](https://github.com/tetsuya-ki/discord-reminderbot/releases/tag/v1.0.3)で追加)
     - [v1.0.0](https://github.com/tetsuya-ki/discord-reminderbot/releases/tag/v1.0.0)で追加
   - reply_is_hidden
     - 自分のみ
@@ -162,7 +173,7 @@
 - Botに登録されているリマインドをすべて表示します
 - オプション
   - status
-    - 実行予定のリマインドリスト
+    - 実行予定のリマインドリスト(デフォルトと同じ)
       - 今後リマインドされるリストを表示します
     - キャンセルしたリマインドリスト
       - キャンセルされたリマインドリストを表示します
@@ -179,6 +190,9 @@
         - 日付
         - メッセージ
         - 繰り返し設定
+        - ギルドID([v1.0.3](https://github.com/tetsuya-ki/discord-reminderbot/releases/tag/v1.0.3)で追加)
+        - メンバーID([v1.0.3](https://github.com/tetsuya-ki/discord-reminderbot/releases/tag/v1.0.3)で追加)
+        - チャンネルID([v1.0.3](https://github.com/tetsuya-ki/discord-reminderbot/releases/tag/v1.0.3)で追加)
     - [v1.0.0](https://github.com/tetsuya-ki/discord-reminderbot/releases/tag/v1.0.0)で追加
   - reply_is_hidden
     - 自分のみ

@@ -307,7 +307,10 @@ class Remind:
 
             LOG.debug(select_sql)
             cur.execute(select_sql)
-            rows = cur.fetchmany(100)
+            if filter:
+                rows = cur.fetchmany(5000)
+            else:
+                rows = cur.fetchmany(100)
             message = self.create_message(rows, filter)
             escaped_mention_text = '(データがありません)' if len(message) == 0 else discord.utils.escape_mentions(message)
             LOG.debug(escaped_mention_text)
@@ -345,8 +348,11 @@ class Remind:
             LOG.debug(select_sql)
 
             cur.execute(select_sql)
-            rows = cur.fetchmany(100)
-            message = self.create_message(rows, filter)
+            if filter:
+                rows = cur.fetchmany(5000)
+            else:
+                rows = cur.fetchmany(100)
+            message = self.create_message(rows, filter, True)
             escaped_mention_text = '(データがありません)' if len(message) == 0 else discord.utils.escape_mentions(message)
             LOG.debug(escaped_mention_text)
         self.encode()
@@ -354,17 +360,26 @@ class Remind:
         text = f'件数: {len(rows)} ステータス: {status}\n' + chopped_escaped_mention_text
         return text
 
-    def create_message(self, rows, filter):
+    def create_message(self, rows, filter, is_all:bool = False):
         message = ''
         for row in rows:
             channel = f'<#{row[4]}>' if row[4] is not None else 'DM'
             repeat_max = str(row[8]) if row[8] is not None else '設定なし(解除するまで)'
             repeat_interval_message = f'間隔: {row[10]}, ' if row[10] is not None else ''
             repeat_message = f'あり({repeat_interval_message}最大回数: {repeat_max})' if row[9] == '1' else 'なし'
-            filter_message = repeat_message+row[5]+str(row[0])+row[1]
+
+            # フィルタ対象かのチェック
+            filter_message = repeat_message+row[5]+str(row[0])+row[1]+str(row[2])+str(row[3])+str(row[4])
             if filter is not None and not filter in filter_message:
                 continue
-            message += f'No. {row[0]} ' + discord.utils.escape_markdown('Remind_datetime: ') + f'{row[1]}\n'
+
+            # all系で実行された場合、Member_IDを付与
+            message += f'No. {row[0]} Remind_datetime: {row[1]}'
+            if is_all:
+                message += f' Member_ID: <@{row[3]}> \n'
+            else:
+                message += f'\n'
+
             message += f'メッセージ: {row[5]}\n'
             message += f'繰り返し設定: {repeat_message} 通知先: {channel}\n--\n'
         return message
@@ -375,6 +390,20 @@ class Remind:
         with conn:
             cur = conn.cursor()
             select_sql = f'''select * from reminder_table where status = '{self.STATUS_PROGRESS}' and member = '{interaction.user.id}' and id = '{id}' '''
+            LOG.debug(select_sql)
+            cur.execute(select_sql)
+            row = cur.fetchone()
+            escaped_mention_text = '(データがありません)' if row is None else discord.utils.escape_mentions(str(row))
+            LOG.debug(escaped_mention_text)
+        self.encode()
+        return row
+
+    def get_by_owner(self, id: int):
+        self.decode()
+        conn = sqlite3.connect(self.FILE_PATH)
+        with conn:
+            cur = conn.cursor()
+            select_sql = f'''select * from reminder_table where id = '{id}' '''
             LOG.debug(select_sql)
             cur.execute(select_sql)
             row = cur.fetchone()
