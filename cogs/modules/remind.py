@@ -18,6 +18,8 @@ class Remind:
     STATUS_SKIPPED = 'Skipped'
     STATUS_DELETED = 'Deleted'
     STATUS_RECOVERED = 'Recovered'
+    STATUS_DELETED_BY_GUILD = 'DeletedByGuild'
+    STATUS_RECOVERED_BY_GUILD = 'RecoveredByGuild'
     JST = timezone(timedelta(hours=+9), 'JST')
     # 環境変数REMIND_CONTROL_CHANNELにあれば、リマインドの管理先としてそちらの名前を使う(複数のリマインダーBotがあって競合するときに使用)
     if settings.REMIND_CONTROL_CHANNEL_NAME:
@@ -293,25 +295,31 @@ class Remind:
             guild = discord.utils.get(self.bot.guilds, id=self.saved_dm_guild)
             await self.set_discord_attachment_file(guild)
 
-    def check_deleted_member(self, user_id: int):
+    def check_deleted_member(self, user_id: int, guild_id: int = None, guild_flg: bool = False):
         '''BANをチェック的なかんじ'''
         self.decode()
 
         conn = sqlite3.connect(self.FILE_PATH)
         with conn:
             cur = conn.cursor()
-            param = (self.STATUS_DELETED, user_id)
             select_sql = 'select count(*) from reminder_table where status = ? and member = ?'
+            add_message = ''
+            if not guild_flg:
+                param = (self.STATUS_DELETED, user_id,)
+            else:
+                select_sql = 'select count(*) from reminder_table where status = ? and guild = ? and member = ?'
+                param = (self.STATUS_DELETED_BY_GUILD, guild_id, user_id,)
+                add_message = f'(guild({str(guild_id)}))'
             LOG.debug(select_sql)
             cur.execute(select_sql, param)
             result_count = cur.fetchone()[0]
 
             if result_count > 0:
-                LOG.info(f'BANされているユーザーによる実行です(user_id:{user_id})')
+                LOG.info(f'BAN{add_message}されているユーザーによる実行です(user_id:{user_id})')
         self.encode()
         return result_count
 
-    async def delete_remind_by_user_id(self, user_id: int, guild_id: int):
+    async def delete_remind_by_user_id(self, user_id: int, guild_id: int, guild_flg: bool = False):
         '''BAN的なかんじ'''
         self.decode()
 
@@ -321,18 +329,29 @@ class Remind:
             cur = conn.cursor()
 
             select_update_sql = 'select count(*) from reminder_table where member = ? and status = ?'
-            param = (user_id, self.STATUS_PROGRESS,)
+            add_message = ''
+            if not guild_flg:
+                param = (user_id, self.STATUS_PROGRESS,)
+            else:
+                select_update_sql = 'select count(*) from reminder_table where member = ? and status = ? and guild = ?'
+                param = (user_id, self.STATUS_PROGRESS, guild_id,)
+                add_message = f'(guild({str(guild_id)}))'
             LOG.info(select_update_sql)
             cur.execute(select_update_sql, param)
             result_count = cur.fetchone()[0]
-            LOG.info("BAN対象の登録したメッセージ(PROGRESS)件数: " + str(result_count))
+            LOG.info(f'BAN対象{add_message}の登録したメッセージ(PROGRESS)件数: {str(result_count)}')
 
-            remind_param = (self.STATUS_DELETED, now, user_id, self.STATUS_PROGRESS,)
             update_sql = 'update reminder_table set status=?, updated_at = ? where member = ? and status = ?'
+            if not guild_flg:
+                remind_param = (self.STATUS_DELETED, now, user_id, self.STATUS_PROGRESS,)
+            else:
+                update_sql = 'update reminder_table set status=?, updated_at = ? where member = ? and guild = ? and status = ?'
+                remind_param = (self.STATUS_DELETED_BY_GUILD, now, user_id, guild_id, self.STATUS_PROGRESS,)
+
             LOG.info(update_sql)
             conn.execute(update_sql, remind_param)
             conn.commit()
-            LOG.info(f'id:{user_id}のデータをDELETEDにしました(荒らしっぽいもの対策)')
+            LOG.info(f'id:{user_id}のデータ{add_message}をDELETEDにしました(荒らしっぽいもの対策)')
         self.read()
         self.encode()
 
@@ -351,7 +370,59 @@ class Remind:
             guild = discord.utils.get(self.bot.guilds, id=self.saved_dm_guild)
             await self.set_discord_attachment_file(guild)
 
-    async def recover_remind_by_user_id(self, user_id: int, guild_id: int):
+
+    async def delete_remind_by_id(self, id: int, guild_id: int, guild_flg: bool = False):
+        '''BAN的なかんじ'''
+        self.decode()
+
+        conn = sqlite3.connect(self.FILE_PATH)
+        with conn:
+            now = datetime.datetime.now(self.JST)
+            cur = conn.cursor()
+
+            select_update_sql = 'select count(*) from reminder_table where id = ? '
+            add_message = ''
+            if not guild_flg:
+                param = (id,)
+            else:
+                select_update_sql = 'select count(*) from reminder_table where id = ? and guild = ?'
+                param = (id, guild_id,)
+                add_message = f'(guild({str(guild_id)}))'
+            LOG.info(select_update_sql)
+            cur.execute(select_update_sql, param)
+            result_count = cur.fetchone()[0]
+
+            if result_count > 0:
+                update_sql = 'update reminder_table set status=?, updated_at = ? where id = ?'
+                if not guild_flg:
+                    remind_param = (self.STATUS_DELETED, now, id,)
+                else:
+                    update_sql = 'update reminder_table set status=?, updated_at = ? where id = ? and guild = ?'
+                    remind_param = (self.STATUS_DELETED_BY_GUILD, now, id, guild_id,)
+
+                LOG.info(update_sql)
+                conn.execute(update_sql, remind_param)
+                conn.commit()
+                LOG.info(f'id:{id}の指定されたデータ{add_message}をDELETEDにしました(荒らしっぽいもの対策)')
+        self.read()
+        self.encode()
+
+        # 添付対象のギルドの決定
+        if guild_id is None:
+            guild = discord.utils.get(self.bot.guilds, id=self.saved_dm_guild)
+        else:
+            guild = discord.utils.get(self.bot.guilds, id=guild_id)
+
+        # Herokuの時のみ、チャンネルにファイルを添付する
+        try:
+            await self.set_discord_attachment_file(guild)
+        except discord.errors.Forbidden:
+            msg = f'＊＊＊{guild.name}へのチャンネル作成に失敗したため、dm_guildへ添付します＊＊＊'
+            LOG.info(msg)
+            guild = discord.utils.get(self.bot.guilds, id=self.saved_dm_guild)
+            await self.set_discord_attachment_file(guild)
+
+    async def recover_remind_by_user_id(self, user_id: int, guild_id: int, guild_flg: bool = False):
         '''BAN解除'''
         self.decode()
 
@@ -361,18 +432,28 @@ class Remind:
             cur = conn.cursor()
 
             select_update_sql = 'select count(*) from reminder_table where member = ? and status = ?'
-            param = (user_id, self.STATUS_DELETED,)
+            add_message = ''
+            if not guild_flg:
+                param = (user_id, self.STATUS_DELETED,)
+            else:
+                select_update_sql = 'select count(*) from reminder_table where member = ? and status = ? and guild = ?'
+                param = (user_id, self.STATUS_DELETED, guild_id,)
+                add_message = f'(guild({str(guild_id)}))'
             LOG.info(select_update_sql)
             cur.execute(select_update_sql, param)
             result_count = cur.fetchone()[0]
-            LOG.info("BANされたメッセージの件数: " + str(result_count))
+            LOG.info(f"BAN{add_message}されたメッセージの件数: {str(result_count)}")
 
-            remind_param = (self.STATUS_RECOVERED, now, user_id, self.STATUS_DELETED,)
             update_sql = 'update reminder_table set status=?, updated_at = ? where member = ? and status = ?'
+            if not guild_flg:
+                remind_param = (self.STATUS_RECOVERED, now, user_id, self.STATUS_DELETED,)
+            else:
+                update_sql = 'update reminder_table set status=?, updated_at = ? where member = ? and guild = ? and status = ?'
+                remind_param = (self.STATUS_RECOVERED_BY_GUILD, now, user_id, guild_id, self.STATUS_DELETED_BY_GUILD,)
             LOG.info(update_sql)
             conn.execute(update_sql, remind_param)
             conn.commit()
-            LOG.info(f'id:{user_id}のデータをRECOVEREDにしました(BAN解除)')
+            LOG.info(f'id:{user_id}のデータ{add_message}をRECOVEREDにしました(BAN解除)')
         self.read()
         self.encode()
 
@@ -499,7 +580,7 @@ class Remind:
         self.encode()
         return row
 
-    def get_by_owner(self, id: int, status: str = ""):
+    def get_by_owner(self, id: int, status: str = "", guild_id: int = None):
         self.decode()
         conn = sqlite3.connect(self.FILE_PATH)
         with conn:
@@ -507,6 +588,8 @@ class Remind:
             select_sql = f'''select * from reminder_table where id = '{id}' '''
             if status:
                 select_sql += f'''and status = '{status}' '''
+            if guild_id:
+                select_sql += f'''and guild = '{guild_id}' '''
             LOG.debug(select_sql)
             cur.execute(select_sql)
             row = cur.fetchone()
@@ -515,12 +598,14 @@ class Remind:
         self.encode()
         return row
 
-    def recovery_check(self, id: int):
+    def recovery_check(self, id: int, guild_id: int = None):
         self.decode()
         conn = sqlite3.connect(self.FILE_PATH)
         with conn:
             cur = conn.cursor()
             select_sql = f'''select * from reminder_table where id = '{id}' '''
+            if guild_id is not None:
+                select_sql += f'''and guild = '{guild_id}' '''
             LOG.debug(select_sql)
             cur.execute(select_sql)
             row = cur.fetchone()
@@ -528,6 +613,8 @@ class Remind:
                 return None
             # 対象のIDのメンバーID、かつ、削除されたステータスを再検索
             select_sql2 = f'''select * from reminder_table where member = '{row[3]}' and status = '{self.STATUS_DELETED}' '''
+            if guild_id is not None:
+                select_sql2 = f'''select * from reminder_table where member = '{row[3]}' and guild = '{row[2]}' and status = '{self.STATUS_DELETED_BY_GUILD}' '''
             LOG.debug(select_sql2)
             cur.execute(select_sql2)
             row = cur.fetchone()
