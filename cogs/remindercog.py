@@ -289,14 +289,13 @@ class ReminderCog(commands.Cog):
             await interaction.followup.send(error_message, ephemeral=True)
             return
 
-        # 1日加算の処理
-        date = date + relativedelta(days=+int(add_day))
-
         # リマインド日時への変換
         remind_datetime = None
         try:
             remind_datetime = dateutil.parser.parse(
                 f'{date} {time} +0900 (JST)', yearfirst=True)
+            # 1日加算の処理
+            remind_datetime = remind_datetime + relativedelta(days=+int(add_day))
         except ValueError as e:
             error_message = '不正な日時のため、リマインドを登録できませんでした'
             LOG.info(error_message)
@@ -523,14 +522,13 @@ class ReminderCog(commands.Cog):
             await interaction.followup.send(error_message, ephemeral=True)
             return
 
-        # 1日加算の処理
-        date = date + relativedelta(days=+int(add_day))
-
         # リマインド日時への変換
         next_remind_datetime = None
         try:
             next_remind_datetime = dateutil.parser.parse(
                 f'{date} {time} +0900 (JST)', yearfirst=True)
+            # 1日加算の処理
+            next_remind_datetime = next_remind_datetime + relativedelta(days=+int(add_day))
         except ValueError as e:
             LOG.info(error_message)
             LOG.info(e)
