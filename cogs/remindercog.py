@@ -282,7 +282,7 @@ class ReminderCog(commands.Cog):
         # dateの確認&変換
         date = self.check_date_and_convert(date)
         # 時間の変換
-        time = self.check_time_and_convert(time)
+        time, add_day = self.check_time_and_convert(time)
         if time == 'NG':
             error_message = '不正な時間のため、リマインドを登録できませんでした'
             LOG.info(error_message)
@@ -294,6 +294,8 @@ class ReminderCog(commands.Cog):
         try:
             remind_datetime = dateutil.parser.parse(
                 f'{date} {time} +0900 (JST)', yearfirst=True)
+            # 1日加算の処理
+            remind_datetime = remind_datetime + relativedelta(days=+int(add_day))
         except ValueError as e:
             error_message = '不正な日時のため、リマインドを登録できませんでした'
             LOG.info(error_message)
@@ -513,7 +515,7 @@ class ReminderCog(commands.Cog):
         # 時間の変換
         if next_time is None:
             next_time = remind_datetime.strftime('%H:%M')
-        time = self.check_time_and_convert(next_time, remind_datetime)
+        time, add_day = self.check_time_and_convert(next_time, remind_datetime)
         error_message = '不正な時間のため、スキップできませんでした'
         if time == 'NG':
             LOG.info(error_message)
@@ -525,6 +527,8 @@ class ReminderCog(commands.Cog):
         try:
             next_remind_datetime = dateutil.parser.parse(
                 f'{date} {time} +0900 (JST)', yearfirst=True)
+            # 1日加算の処理
+            next_remind_datetime = next_remind_datetime + relativedelta(days=+int(add_day))
         except ValueError as e:
             LOG.info(error_message)
             LOG.info(e)
@@ -985,6 +989,8 @@ class ReminderCog(commands.Cog):
         return date
 
     def check_time_and_convert(self, time:str, base_time=None):
+        add_day = 0
+        result_time = None
         if base_time is None:
             base_time = datetime.datetime.now(self.JST)
         m_hours = re.match('^([0-9]{1,3})h$', time)
@@ -1002,7 +1008,12 @@ class ReminderCog(commands.Cog):
             pass
         else:
             return 'NG'
-        return time
+
+        # 1日加算の処理
+        if result_time is not None and base_time.strftime('%Y/%m/%d') != result_time.strftime('%Y/%m/%d'):
+            add_day = 1
+
+        return time, add_day
 
     def check_repeat_num_and_calc(self, remind, repeat_count):
         remind_repeat_max_str = str(remind[8])
