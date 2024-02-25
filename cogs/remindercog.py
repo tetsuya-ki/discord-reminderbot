@@ -46,7 +46,7 @@ class ReminderCog(commands.Cog):
     def cog_unload(self):
         self.printer.cancel()
 
-    @tasks.loop(seconds=20.0)
+    @tasks.loop(seconds=30.0)
     async def printer(self):
         now = datetime.datetime.now(self.JST)
         LOG.debug(f'printer is kicked.({now})')
@@ -102,7 +102,7 @@ class ReminderCog(commands.Cog):
                     try:
                         remind_msg = await channel.send(msg, silent=silent_flg)
                     except discord.errors.Forbidden:
-                        msg = f'＊＊＊{remind[2]}のDMへの投稿に失敗しました！＊＊＊'
+                        msg = f'＊＊＊{remind[3]}のDMへの投稿に失敗しました！＊＊＊'
                         LOG.error(msg)
 
                         # リマインドを削除
@@ -190,6 +190,11 @@ class ReminderCog(commands.Cog):
                             await self.bot.fetch_guild(remind[2])
                     except:
                         LOG.warning(f'No.{remind[0]}(guild:{remind[2]}が取得できなかったため、繰り返し対象外とします。')
+                        continue
+
+                    # BANチェック
+                    if self.remind.check_deleted_member(remind[3]) > 0 or self.remind.check_deleted_member(remind[3], remind[2], True) > 0:
+                        LOG.info('BANされているため、次回のリマインドを登録できませんでした')
                         continue
 
                     # remind[10](repeat_interval)に従って、次のリマインドを作成
