@@ -77,14 +77,14 @@ class Remind:
         LOG.info('準備完了')
 
     async def get_discord_attachment_file(self):
-        # HerokuかRepl.itの時のみ実施
-        if settings.IS_HEROKU or settings.IS_REPLIT:
+        # Herokuの時のみ実施
+        if settings.IS_HEROKU:
             # 環境変数によって、添付ファイルのファイル名を変更する
             file_name = self.aes.ENC_FILE if settings.KEEP_DECRYPTED_FILE else self.DATABASE
             LOG.debug('Heroku mode.start get_discord_attachment_file.')
             # ファイルをチェックし、存在しなければ最初と見做す
             file_path_first_time = join(dirname(__file__), 'files' + os.sep + 'first_time')
-            if (settings.IS_HEROKU and not os.path.exists(file_path_first_time)) or settings.IS_REPLIT:
+            if (settings.IS_HEROKU and not os.path.exists(file_path_first_time)):
                 if settings.IS_HEROKU:
                     with open(file_path_first_time, 'w') as f:
                         now = datetime.datetime.now(self.JST)
@@ -136,8 +136,8 @@ class Remind:
             LOG.debug('get_discord_attachment_file is over!')
 
     async def set_discord_attachment_file(self, guild):
-        # HerokuかRepl.itの時のみ実施
-        if settings.IS_HEROKU or settings.IS_REPLIT:
+        # Herokuの時のみ実施
+        if settings.IS_HEROKU:
             # 環境変数によって、添付ファイルのファイル名を変更する
             file_name = self.aes.ENC_FILE if settings.KEEP_DECRYPTED_FILE else self.DATABASE
             LOG.debug('Heroku mode.start set_discord_attachment_file.')
@@ -369,7 +369,6 @@ class Remind:
             LOG.info(msg)
             guild = discord.utils.get(self.bot.guilds, id=self.saved_dm_guild)
             await self.set_discord_attachment_file(guild)
-
 
     async def delete_remind_by_id(self, id: int, guild_id: int, guild_flg: bool = False):
         '''BAN的なかんじ'''

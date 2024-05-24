@@ -345,12 +345,6 @@
   - Herokuの場合、ファイルが削除されるので、discordの添付ファイルを使って保管を試みる(ファイルが削除されていたら、読み込む)
 - 例: IS_HEROKU=FALSE
 
-### IS_REPLIT
-
-- Repl.itで動かすかどうか
-  - Repl.itの場合、sqlite3の保管が怪しいので、discordの添付ファイルを使って保管を試みる
-- 例: IS_REPLIT=TRUE
-
 ### RESTRICT_ATTACHMENT_FILE
 
 - Bot自身が添付したファイルのみ読み込むように制限するかどうか
@@ -428,7 +422,6 @@ services:
       - ENABLE_SLASH_COMMAND_GUILD_ID= __あなたのGuild_IDを入力(数字/複数あるなら;を挟むこと。グローバルコマンドの場合は入力しないこと！(その場合1時間程度登録に時間がかかる可能性があります))__
       - KEEP_DECRYPTED_FILE=FALSE
       - IS_HEROKU=FALSE
-      - IS_REPLIT=FALSE
       - RESTRICT_ATTACHMENT_FILE=FALSE
       - PRIORITY_GUILD=__あなたのGuild_IDを入力(数字)__
       - REMIND_CONTROL_CHANNEL_NAME=remind_control_channel
