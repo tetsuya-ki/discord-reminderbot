@@ -3,7 +3,6 @@ from discord.ext import commands
 from logging import basicConfig, getLogger, StreamHandler, FileHandler, Formatter, NOTSET
 from datetime import timedelta, timezone
 import discord, os, datetime, asyncio
-import keep_alive
 
 # 時間
 JST = timezone(timedelta(hours=9), 'JST')
@@ -85,5 +84,4 @@ if __name__ == '__main__':
     asyncio.run(main())
 
     # start a server
-    keep_alive.keep_alive()
     asyncio.run(main())
