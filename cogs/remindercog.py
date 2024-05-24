@@ -834,11 +834,11 @@ class ReminderCog(commands.Cog):
         await interaction.followup.send(msg, ephemeral = hidden)
 
     @app_commands.command(
-        name='delete-old-data',
+        name='delete-old-remind',
         description='<注意>完了したremindをぜんぶ削除する(BotのオーナーのみDMで実行可能です！)')
     @app_commands.describe(
         reply_is_hidden='Botの実行結果を全員に見せるどうか(リマインド自体は普通です/他の人にもリマインドを使わせたい場合、全員に見せる方がオススメです))')
-    async def _delete_old_data(self,
+    async def _delete_old_remind(self,
                             interaction: discord.Interaction,
                             reply_is_hidden: Literal['自分のみ', '全員に見せる'] = SHOW_ME):
         if interaction.user != self.info.owner:
@@ -851,6 +851,53 @@ class ReminderCog(commands.Cog):
 
         await self.remind.delete_old_reminder(interaction)
         await interaction.followup.send('ステータスが完了のリマインドを全て削除しました', ephemeral = hidden)
+
+    @app_commands.command(
+        name='delete-own-remind',
+        description='<注意>自分のremindをぜんぶ削除する')
+    @app_commands.describe(
+        confirm='削除したら元に戻せませんが、削除しますか？')
+    @app_commands.describe(
+        reply_is_hidden='Botの実行結果を全員に見せるどうか(リマインド自体は普通です/他の人にもリマインドを使わせたい場合、全員に見せる方がオススメです))')
+    async def _delete_own_remind(self,
+                            interaction: discord.Interaction,
+                            confirm: Literal['やっぱりやめておく', '削除する'] = 'やっぱりやめておく',
+                            reply_is_hidden: Literal['自分のみ', '全員に見せる'] = SHOW_ME):
+        if confirm != '削除する':
+            await interaction.response.send_message('自分の全リマインドの削除を取り消しました(削除にはオプションで「削除する」が必要です)', ephemeral = True)
+            return
+        LOG.info('自分のremindをdeleteするぜ！')
+        hidden = True if reply_is_hidden == self.SHOW_ME else False
+        await interaction.response.defer(ephemeral = hidden)
+        self.check_printer_is_running()
+
+        message = await self.remind.delete_by_own(interaction)
+        await interaction.followup.send(message, ephemeral = hidden)
+
+    @app_commands.command(
+        name='delete-guild-remind',
+        description='<注意>ギルドのremindをぜんぶ削除する(administrator権限保持者のみ実行可能です！)')
+    @app_commands.describe(
+        confirm='削除したら元に戻せませんが、削除しますか？')
+    @app_commands.describe(
+        reply_is_hidden='Botの実行結果を全員に見せるどうか(リマインド自体は普通です/他の人にもリマインドを使わせたい場合、全員に見せる方がオススメです))')
+    @app_commands.guild_only()
+    @app_commands.default_permissions(administrator=True)
+    @app_commands.checks.has_permissions(administrator=True)
+    async def _delete_guild_remind(self,
+                            interaction: discord.Interaction,
+                            confirm: Literal['やっぱりやめておく', '削除する'] = 'やっぱりやめておく',
+                            reply_is_hidden: Literal['自分のみ', '全員に見せる'] = SHOW_ME):
+        if confirm != '削除する':
+            await interaction.response.send_message('ギルドの全リマインドの削除を取り消しました(削除にはオプションで「削除する」が必要です)', ephemeral = True)
+            return
+        LOG.info('ギルドのremindをdelete(admin)するぜ！')
+        hidden = True if reply_is_hidden == self.SHOW_ME else False
+        await interaction.response.defer(ephemeral = hidden)
+        self.check_printer_is_running()
+
+        message = await self.remind.delete_guild_by_admin(interaction)
+        await interaction.followup.send(message, ephemeral = hidden)
 
     def calc_next_reminder_date(self, remind_datetime, repeat_interval):
         re_minutes = r'([0-9]*)mi$'

@@ -176,6 +176,18 @@
     - 全員に見せる
       - 実行結果はBotからのリプライとして表示されます
 
+### `/delete-own-remind`
+
+- 自分のリマインドをすべて削除します([v1.0.5](https://github.com/tetsuya-ki/discord-reminderbot/releases/tag/v1.0.5)で追加)
+- オプション
+  - confirm(削除確認)
+    - 削除するを選択したときのみ、削除します。
+  - reply_is_hidden
+    - 自分のみ
+      - 実行結果は自分だけ見ることができます
+    - 全員に見せる
+      - 実行結果はBotからのリプライとして表示されます
+
 ## ギルド管理者向けの機能
 
   ギルドの管理者権限保持者向けの機能です
@@ -245,6 +257,19 @@
     - 全員に見せる
       - 実行結果はBotからのリプライとして表示されます
 
+### `/delete-guild-remind`
+
+- ギルドのリマインドをすべて削除します([v1.0.5](https://github.com/tetsuya-ki/discord-reminderbot/releases/tag/v1.0.5)で追加)
+- ギルド内のみ、かつ、ギルドの管理者権限保持者のみ使用可能
+- オプション
+  - confirm(削除確認)
+    - 削除するを選択したときのみ、削除します。
+  - reply_is_hidden
+    - 自分のみ
+      - 実行結果は自分だけ見ることができます
+    - 全員に見せる
+      - 実行結果はBotからのリプライとして表示されます
+
 ## Botオーナー向けの機能
 
 - ここでいう"Botオーナー"とは、discord-reminderbotのトークンを生成した人のことです
@@ -283,10 +308,11 @@
     - 全員に見せる
       - 実行結果はBotからのリプライとして表示されます
 
-### `/delete-old-data`
+### `/delete-old-remind`
 
 - Botのオーナー(DiscordのBotのトークンを生成した人)のみ使用可能
 - ステータスが「完了」のリマインドをすべて削除(添付ファイルの容量が厳しいため)
+- もともと`/delete-old-data`だったが、`/delete-old-remind`へ修正([v1.0.5](https://github.com/tetsuya-ki/discord-reminderbot/releases/tag/v1.0.5))
 
 ### `/remind-id-user-delete`
 

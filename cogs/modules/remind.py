@@ -579,6 +579,23 @@ class Remind:
         self.encode()
         return row
 
+    def count(self, user_id: int = None, guild_id: int = None):
+        self.decode()
+        conn = sqlite3.connect(self.FILE_PATH)
+        with conn:
+            cur = conn.cursor()
+            select_sql = f'''select count(*) from reminder_table where '''
+            if user_id:
+                select_sql += f'''member = '{user_id}' '''
+            elif guild_id:
+                select_sql += f'''guild = '{guild_id}' '''
+            LOG.debug(select_sql)
+            cur.execute(select_sql)
+            result_count = cur.fetchone()[0]
+            LOG.debug(result_count)
+        self.encode()
+        return result_count
+
     def get_by_owner(self, id: int, status: str = "", guild_id: int = None):
         self.decode()
         conn = sqlite3.connect(self.FILE_PATH)
@@ -646,6 +663,66 @@ class Remind:
             LOG.info(msg)
             guild = discord.utils.get(self.bot.guilds, id=self.saved_dm_guild)
             await self.set_discord_attachment_file(guild)
+
+    async def delete_by_own(self, interaction: discord.Interaction):
+        # 対象が存在するかチェック
+        count = self.count(interaction.user.id)
+        if count == 0:
+            return '対象が存在しないため、何も実行されませんでした'
+
+        self.decode()
+        conn = sqlite3.connect(self.FILE_PATH)
+        with conn:
+            cur = conn.cursor()
+            delete_sql = f'''delete from reminder_table where member = '{interaction.user.id}' '''
+            LOG.debug(delete_sql)
+            cur.execute(delete_sql)
+            LOG.debug('delete reminder by own ')
+            conn.commit()
+            cur.execute('vacuum')
+        self.read()
+        self.encode()
+        guild = interaction.guild
+        if guild is None:
+            guild = self.saved_dm_guild
+        # Herokuの時のみ、チャンネルにファイルを添付する
+        try:
+            await self.set_discord_attachment_file(guild)
+        except discord.errors.Forbidden:
+            msg = f'＊＊＊{guild.name}へのチャンネル作成に失敗したため、dm_guildへ添付します＊＊＊'
+            LOG.info(msg)
+            guild = discord.utils.get(self.bot.guilds, id=self.saved_dm_guild)
+            await self.set_discord_attachment_file(guild)
+        return '自分のremindをすべて削除しました'
+
+    async def delete_guild_by_admin(self, interaction: discord.Interaction):
+        # 対象が存在するかチェック
+        count = self.count(None, interaction.guild.id)
+        if count == 0:
+            return '対象が存在しないため、何も実行されませんでした'
+
+        self.decode()
+        conn = sqlite3.connect(self.FILE_PATH)
+        with conn:
+            cur = conn.cursor()
+            delete_sql = f'''delete from reminder_table where guild = '{interaction.guild.id}' '''
+            LOG.debug(delete_sql)
+            cur.execute(delete_sql)
+            LOG.debug('delete guild reminder by admin ')
+            conn.commit()
+            cur.execute('vacuum')
+        self.read()
+        self.encode()
+        guild = interaction.guild
+        # Herokuの時のみ、チャンネルにファイルを添付する
+        try:
+            await self.set_discord_attachment_file(guild)
+        except discord.errors.Forbidden:
+            msg = f'＊＊＊{guild.name}へのチャンネル作成に失敗したため、dm_guildへ添付します＊＊＊'
+            LOG.info(msg)
+            guild = discord.utils.get(self.bot.guilds, id=self.saved_dm_guild)
+            await self.set_discord_attachment_file(guild)
+        return 'ギルドのremindをすべて削除しました'
 
     def get_last_id(self, conn = None, decode_flg = True):
         if conn is None:
