@@ -37,6 +37,7 @@ INITIAL_EXTENSIONS = [
 ]
 
 class DiscordReminderBot(commands.Bot):
+    # 登録数が多い場合は上のやつを commands.AutoShardedBot に変更する
     # DiscordReminderBotのコンストラクタ。
     def __init__(self, command_prefix, intents, application_id):
         # スーパークラスのコンストラクタに値を渡して実行。
