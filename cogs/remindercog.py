@@ -284,6 +284,15 @@ class ReminderCog(commands.Cog):
             await interaction.followup.send(error_message, ephemeral=False)
             return
 
+        # 分指定チェック(分指定の場合は5回以下である必要がある)
+        if repeat_interval is not None and \
+            re.search('mi', repeat_interval, flags=re.IGNORECASE) and \
+            (repeat_max_count is None or (repeat_max_count is not None and repeat_max_count > 5)):
+            error_message = '分指定(**XXmi**)の場合は必ず5回以下の繰り返し回数を指定してください'
+            LOG.info(error_message)
+            await interaction.followup.send(error_message, ephemeral=False)
+            return
+
         # dateの確認&変換
         date = self.check_date_and_convert(date)
         # 時間の変換
