@@ -221,7 +221,9 @@ class ReminderCog(commands.Cog):
                     id = await self.remind.make(remind[2], remind[3], next_remind_datetime, remind_message, remind[4], status, repeat_flg,
                         remind[10], repeat_count, remind[8])
                     try:
-                        await remind_msg.reply(f'次回のリマインドを登録しました(No.{id})', silent=True)
+                        # 返信にリマインド予定日時記載(<t:unix時間:F>でいい感じに表示)
+                        msg = f'次回のリマインドを登録しました(No.{id})\nリマインド予定日時: <t:{int(remind_datetime.timestamp())}:F>'
+                        await remind_msg.reply(msg, silent=True)
                     except:
                         # 投稿に失敗した場合は登録を削除してしまう
                         await self.remind.update_status(id, remind[2], self.remind.STATUS_ERROR)
@@ -409,7 +411,9 @@ class ReminderCog(commands.Cog):
             id = self.remind.get_last_id()
             LOG.warning('コマンドremind_make中に失敗(おそらく添付用チャンネルの作成、または、添付に失敗)')
 
-        await interaction.followup.send(f'リマインドを登録しました(No.{id})', ephemeral = hidden)
+        # 返信にリマインド予定日時記載(<t:unix時間:F>でいい感じに表示)
+        msg = f'リマインドを登録しました(No.{id})\nリマインド予定日時: <t:{int(remind_datetime.timestamp())}:F>'
+        await interaction.followup.send(msg, ephemeral = hidden)
 
     @app_commands.command(
         name='remind-cancel',

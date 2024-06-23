@@ -1,11 +1,10 @@
 from datetime import timedelta, timezone
-from discord.ext import commands
 from os.path import join, dirname
 from logging import getLogger
 from .aes_angou import Aes_angou
 from . import settings
 
-import datetime, discord, sqlite3, os
+import datetime, discord, sqlite3, os, dateutil.parser
 LOG = getLogger('reminderbot')
 
 class Remind:
@@ -554,8 +553,10 @@ class Remind:
             if filter is not None and not filter in filter_message:
                 continue
 
-            # all系で実行された場合、Member_IDを付与
-            message += f'No. {row[0]} Remind_datetime: {row[1]}'
+            # all系で実行された場合、Member_IDを付与 & 日付表示
+            tmp_datetime = dateutil.parser.parse(row[1])
+            unixtime = int(tmp_datetime.timestamp())
+            message += f'No. {row[0]} Remind_datetime: <t:{unixtime}:F>'
             if is_all:
                 message += f' Member_ID: <@{row[3]}> \n'
             else:

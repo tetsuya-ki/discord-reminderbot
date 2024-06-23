@@ -17,6 +17,7 @@
 
 - ギルドで使用すると、自分がそのギルドで登録したリマインドを表示します
 - BotとのDMで使用すると、自分が登録したリマインドを表示します
+  - [v1.0.5](https://github.com/tetsuya-ki/discord-reminderbot/releases/tag/v1.0.5)で日付の表示形式を変更
 - オプション
   - status
     - 実行予定のリマインドリスト(デフォルトと同じ)
@@ -80,6 +81,7 @@
 - オプション
   - repeat_interval(繰り返し間隔)
     - XX分: **XX**mi
+      - 分単位での繰り返し間隔の場合、5回以下の繰り返し回数設定が必須になりました([v1.0.5](https://github.com/tetsuya-ki/discord-reminderbot/releases/tag/v1.0.5)にて変更)
     - XX時間: **XX**h
     - X日:  **X**d
     - Xヶ月: **X**m
@@ -196,6 +198,7 @@
 
 - ギルド内のみ、かつ、ギルドの管理者権限保持者のみ使用可能
 - そのギルドで登録されているリマインドをすべて表示します
+  - [v1.0.5](https://github.com/tetsuya-ki/discord-reminderbot/releases/tag/v1.0.5)で日付の表示形式を変更
 - オプション
   - status
     - 実行予定のリマインドリスト(デフォルトと同じ)
@@ -279,6 +282,7 @@
 
 - BotとのDMのみ、かつ、Botのオーナー(DiscordのBotのトークンを生成した人)のみ使用可能
 - Botに登録されているリマインドをすべて表示します
+  - [v1.0.5](https://github.com/tetsuya-ki/discord-reminderbot/releases/tag/v1.0.5)で日付の表示形式を変更
 - オプション
   - status
     - 実行予定のリマインドリスト(デフォルトと同じ)
