@@ -222,7 +222,7 @@ class ReminderCog(commands.Cog):
                         remind[10], repeat_count, remind[8])
                     try:
                         # 返信にリマインド予定日時記載(<t:unix時間:F>でいい感じに表示)
-                        msg = f'次回のリマインドを登録しました(No.{id})\nリマインド予定日時: <t:{int(remind_datetime.timestamp())}:F>'
+                        msg = f'次回のリマインドを登録しました(No.{id})\nリマインド予定日時: <t:{int(next_remind_datetime.timestamp())}:F>'
                         await remind_msg.reply(msg, silent=True)
                     except:
                         # 投稿に失敗した場合は登録を削除してしまう
