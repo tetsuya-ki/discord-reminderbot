@@ -46,7 +46,7 @@ class ReminderCog(commands.Cog):
     def cog_unload(self):
         self.printer.cancel()
 
-    @tasks.loop(seconds=20.0)
+    @tasks.loop(seconds=30.0)
     async def printer(self):
         now = datetime.datetime.now(self.JST)
         LOG.debug(f'printer is kicked.({now})')
@@ -102,7 +102,7 @@ class ReminderCog(commands.Cog):
                     try:
                         remind_msg = await channel.send(msg, silent=silent_flg)
                     except discord.errors.Forbidden:
-                        msg = f'＊＊＊{remind[2]}のDMへの投稿に失敗しました！＊＊＊'
+                        msg = f'＊＊＊{remind[3]}のDMへの投稿に失敗しました！＊＊＊'
                         LOG.error(msg)
 
                         # リマインドを削除
@@ -192,6 +192,11 @@ class ReminderCog(commands.Cog):
                         LOG.warning(f'No.{remind[0]}(guild:{remind[2]}が取得できなかったため、繰り返し対象外とします。')
                         continue
 
+                    # BANチェック
+                    if self.remind.check_deleted_member(remind[3]) > 0 or self.remind.check_deleted_member(remind[3], remind[2], True) > 0:
+                        LOG.info('BANされているため、次回のリマインドを登録できませんでした')
+                        continue
+
                     # remind[10](repeat_interval)に従って、次のリマインドを作成
                     # remind_datetimeは次の日付に変換（ちょっと難しいところ）
                     next_remind_datetime = self.check_next_reminder_date(remind_datetime, remind[10], now,remind[0])
@@ -216,7 +221,9 @@ class ReminderCog(commands.Cog):
                     id = await self.remind.make(remind[2], remind[3], next_remind_datetime, remind_message, remind[4], status, repeat_flg,
                         remind[10], repeat_count, remind[8])
                     try:
-                        await remind_msg.reply(f'次回のリマインドを登録しました(No.{id})', silent=True)
+                        # 返信にリマインド予定日時記載(<t:unix時間:F>でいい感じに表示)
+                        msg = f'次回のリマインドを登録しました(No.{id})\nリマインド予定日時: <t:{int(next_remind_datetime.timestamp())}:F>'
+                        await remind_msg.reply(msg, silent=True)
                     except:
                         # 投稿に失敗した場合は登録を削除してしまう
                         await self.remind.update_status(id, remind[2], self.remind.STATUS_ERROR)
@@ -275,6 +282,15 @@ class ReminderCog(commands.Cog):
         # BANチェック
         if self.remind.check_deleted_member(interaction.user.id) > 0 or self.remind.check_deleted_member(interaction.user.id, guild_id, True) > 0:
             error_message = '不正な状態のため、リマインドを登録できませんでした'
+            LOG.info(error_message)
+            await interaction.followup.send(error_message, ephemeral=False)
+            return
+
+        # 分指定チェック(分指定の場合は5回以下である必要がある)
+        if repeat_interval is not None and \
+            re.search('mi', repeat_interval, flags=re.IGNORECASE) and \
+            (repeat_max_count is None or (repeat_max_count is not None and repeat_max_count > 5)):
+            error_message = '分指定(**XXmi**)の場合は必ず5回以下の繰り返し回数を指定してください'
             LOG.info(error_message)
             await interaction.followup.send(error_message, ephemeral=False)
             return
@@ -395,7 +411,9 @@ class ReminderCog(commands.Cog):
             id = self.remind.get_last_id()
             LOG.warning('コマンドremind_make中に失敗(おそらく添付用チャンネルの作成、または、添付に失敗)')
 
-        await interaction.followup.send(f'リマインドを登録しました(No.{id})', ephemeral = hidden)
+        # 返信にリマインド予定日時記載(<t:unix時間:F>でいい感じに表示)
+        msg = f'リマインドを登録しました(No.{id})\nリマインド予定日時: <t:{int(remind_datetime.timestamp())}:F>'
+        await interaction.followup.send(msg, ephemeral = hidden)
 
     @app_commands.command(
         name='remind-cancel',
@@ -829,11 +847,11 @@ class ReminderCog(commands.Cog):
         await interaction.followup.send(msg, ephemeral = hidden)
 
     @app_commands.command(
-        name='delete-old-data',
+        name='delete-old-remind',
         description='<注意>完了したremindをぜんぶ削除する(BotのオーナーのみDMで実行可能です！)')
     @app_commands.describe(
         reply_is_hidden='Botの実行結果を全員に見せるどうか(リマインド自体は普通です/他の人にもリマインドを使わせたい場合、全員に見せる方がオススメです))')
-    async def _delete_old_data(self,
+    async def _delete_old_remind(self,
                             interaction: discord.Interaction,
                             reply_is_hidden: Literal['自分のみ', '全員に見せる'] = SHOW_ME):
         if interaction.user != self.info.owner:
@@ -846,6 +864,53 @@ class ReminderCog(commands.Cog):
 
         await self.remind.delete_old_reminder(interaction)
         await interaction.followup.send('ステータスが完了のリマインドを全て削除しました', ephemeral = hidden)
+
+    @app_commands.command(
+        name='delete-own-remind',
+        description='<注意>自分のremindをぜんぶ削除する')
+    @app_commands.describe(
+        confirm='削除したら元に戻せませんが、削除しますか？')
+    @app_commands.describe(
+        reply_is_hidden='Botの実行結果を全員に見せるどうか(リマインド自体は普通です/他の人にもリマインドを使わせたい場合、全員に見せる方がオススメです))')
+    async def _delete_own_remind(self,
+                            interaction: discord.Interaction,
+                            confirm: Literal['やっぱりやめておく', '削除する'] = 'やっぱりやめておく',
+                            reply_is_hidden: Literal['自分のみ', '全員に見せる'] = SHOW_ME):
+        if confirm != '削除する':
+            await interaction.response.send_message('自分の全リマインドの削除を取り消しました(削除にはオプションで「削除する」が必要です)', ephemeral = True)
+            return
+        LOG.info('自分のremindをdeleteするぜ！')
+        hidden = True if reply_is_hidden == self.SHOW_ME else False
+        await interaction.response.defer(ephemeral = hidden)
+        self.check_printer_is_running()
+
+        message = await self.remind.delete_by_own(interaction)
+        await interaction.followup.send(message, ephemeral = hidden)
+
+    @app_commands.command(
+        name='delete-guild-remind',
+        description='<注意>ギルドのremindをぜんぶ削除する(administrator権限保持者のみ実行可能です！)')
+    @app_commands.describe(
+        confirm='削除したら元に戻せませんが、削除しますか？')
+    @app_commands.describe(
+        reply_is_hidden='Botの実行結果を全員に見せるどうか(リマインド自体は普通です/他の人にもリマインドを使わせたい場合、全員に見せる方がオススメです))')
+    @app_commands.guild_only()
+    @app_commands.default_permissions(administrator=True)
+    @app_commands.checks.has_permissions(administrator=True)
+    async def _delete_guild_remind(self,
+                            interaction: discord.Interaction,
+                            confirm: Literal['やっぱりやめておく', '削除する'] = 'やっぱりやめておく',
+                            reply_is_hidden: Literal['自分のみ', '全員に見せる'] = SHOW_ME):
+        if confirm != '削除する':
+            await interaction.response.send_message('ギルドの全リマインドの削除を取り消しました(削除にはオプションで「削除する」が必要です)', ephemeral = True)
+            return
+        LOG.info('ギルドのremindをdelete(admin)するぜ！')
+        hidden = True if reply_is_hidden == self.SHOW_ME else False
+        await interaction.response.defer(ephemeral = hidden)
+        self.check_printer_is_running()
+
+        message = await self.remind.delete_guild_by_admin(interaction)
+        await interaction.followup.send(message, ephemeral = hidden)
 
     def calc_next_reminder_date(self, remind_datetime, repeat_interval):
         re_minutes = r'([0-9]*)mi$'

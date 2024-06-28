@@ -17,6 +17,7 @@
 
 - ギルドで使用すると、自分がそのギルドで登録したリマインドを表示します
 - BotとのDMで使用すると、自分が登録したリマインドを表示します
+  - [v1.0.5](https://github.com/tetsuya-ki/discord-reminderbot/releases/tag/v1.0.5)で日付の表示形式を変更
 - オプション
   - status
     - 実行予定のリマインドリスト(デフォルトと同じ)
@@ -80,6 +81,7 @@
 - オプション
   - repeat_interval(繰り返し間隔)
     - XX分: **XX**mi
+      - 分単位での繰り返し間隔の場合、5回以下の繰り返し回数設定が必須になりました([v1.0.5](https://github.com/tetsuya-ki/discord-reminderbot/releases/tag/v1.0.5)にて変更)
     - XX時間: **XX**h
     - X日:  **X**d
     - Xヶ月: **X**m
@@ -176,6 +178,18 @@
     - 全員に見せる
       - 実行結果はBotからのリプライとして表示されます
 
+### `/delete-own-remind`
+
+- 自分のリマインドをすべて削除します([v1.0.5](https://github.com/tetsuya-ki/discord-reminderbot/releases/tag/v1.0.5)で追加)
+- オプション
+  - confirm(削除確認)
+    - 削除するを選択したときのみ、削除します。
+  - reply_is_hidden
+    - 自分のみ
+      - 実行結果は自分だけ見ることができます
+    - 全員に見せる
+      - 実行結果はBotからのリプライとして表示されます
+
 ## ギルド管理者向けの機能
 
   ギルドの管理者権限保持者向けの機能です
@@ -184,6 +198,7 @@
 
 - ギルド内のみ、かつ、ギルドの管理者権限保持者のみ使用可能
 - そのギルドで登録されているリマインドをすべて表示します
+  - [v1.0.5](https://github.com/tetsuya-ki/discord-reminderbot/releases/tag/v1.0.5)で日付の表示形式を変更
 - オプション
   - status
     - 実行予定のリマインドリスト(デフォルトと同じ)
@@ -245,6 +260,19 @@
     - 全員に見せる
       - 実行結果はBotからのリプライとして表示されます
 
+### `/delete-guild-remind`
+
+- ギルドのリマインドをすべて削除します([v1.0.5](https://github.com/tetsuya-ki/discord-reminderbot/releases/tag/v1.0.5)で追加)
+- ギルド内のみ、かつ、ギルドの管理者権限保持者のみ使用可能
+- オプション
+  - confirm(削除確認)
+    - 削除するを選択したときのみ、削除します。
+  - reply_is_hidden
+    - 自分のみ
+      - 実行結果は自分だけ見ることができます
+    - 全員に見せる
+      - 実行結果はBotからのリプライとして表示されます
+
 ## Botオーナー向けの機能
 
 - ここでいう"Botオーナー"とは、discord-reminderbotのトークンを生成した人のことです
@@ -254,6 +282,7 @@
 
 - BotとのDMのみ、かつ、Botのオーナー(DiscordのBotのトークンを生成した人)のみ使用可能
 - Botに登録されているリマインドをすべて表示します
+  - [v1.0.5](https://github.com/tetsuya-ki/discord-reminderbot/releases/tag/v1.0.5)で日付の表示形式を変更
 - オプション
   - status
     - 実行予定のリマインドリスト(デフォルトと同じ)
@@ -283,10 +312,11 @@
     - 全員に見せる
       - 実行結果はBotからのリプライとして表示されます
 
-### `/delete-old-data`
+### `/delete-old-remind`
 
 - Botのオーナー(DiscordのBotのトークンを生成した人)のみ使用可能
 - ステータスが「完了」のリマインドをすべて削除(添付ファイルの容量が厳しいため)
+- もともと`/delete-old-data`だったが、`/delete-old-remind`へ修正([v1.0.5](https://github.com/tetsuya-ki/discord-reminderbot/releases/tag/v1.0.5))
 
 ### `/remind-id-user-delete`
 
@@ -344,12 +374,6 @@
 - Herokuで動かすかどうか
   - Herokuの場合、ファイルが削除されるので、discordの添付ファイルを使って保管を試みる(ファイルが削除されていたら、読み込む)
 - 例: IS_HEROKU=FALSE
-
-### IS_REPLIT
-
-- Repl.itで動かすかどうか
-  - Repl.itの場合、sqlite3の保管が怪しいので、discordの添付ファイルを使って保管を試みる
-- 例: IS_REPLIT=TRUE
 
 ### RESTRICT_ATTACHMENT_FILE
 
@@ -428,7 +452,6 @@ services:
       - ENABLE_SLASH_COMMAND_GUILD_ID= __あなたのGuild_IDを入力(数字/複数あるなら;を挟むこと。グローバルコマンドの場合は入力しないこと！(その場合1時間程度登録に時間がかかる可能性があります))__
       - KEEP_DECRYPTED_FILE=FALSE
       - IS_HEROKU=FALSE
-      - IS_REPLIT=FALSE
       - RESTRICT_ATTACHMENT_FILE=FALSE
       - PRIORITY_GUILD=__あなたのGuild_IDを入力(数字)__
       - REMIND_CONTROL_CHANNEL_NAME=remind_control_channel

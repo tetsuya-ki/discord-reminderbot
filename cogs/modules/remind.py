@@ -1,11 +1,10 @@
 from datetime import timedelta, timezone
-from discord.ext import commands
 from os.path import join, dirname
 from logging import getLogger
 from .aes_angou import Aes_angou
 from . import settings
 
-import datetime, discord, sqlite3, os
+import datetime, discord, sqlite3, os, dateutil.parser
 LOG = getLogger('reminderbot')
 
 class Remind:
@@ -77,14 +76,14 @@ class Remind:
         LOG.info('準備完了')
 
     async def get_discord_attachment_file(self):
-        # HerokuかRepl.itの時のみ実施
-        if settings.IS_HEROKU or settings.IS_REPLIT:
+        # Herokuの時のみ実施
+        if settings.IS_HEROKU:
             # 環境変数によって、添付ファイルのファイル名を変更する
             file_name = self.aes.ENC_FILE if settings.KEEP_DECRYPTED_FILE else self.DATABASE
             LOG.debug('Heroku mode.start get_discord_attachment_file.')
             # ファイルをチェックし、存在しなければ最初と見做す
             file_path_first_time = join(dirname(__file__), 'files' + os.sep + 'first_time')
-            if (settings.IS_HEROKU and not os.path.exists(file_path_first_time)) or settings.IS_REPLIT:
+            if (settings.IS_HEROKU and not os.path.exists(file_path_first_time)):
                 if settings.IS_HEROKU:
                     with open(file_path_first_time, 'w') as f:
                         now = datetime.datetime.now(self.JST)
@@ -136,8 +135,8 @@ class Remind:
             LOG.debug('get_discord_attachment_file is over!')
 
     async def set_discord_attachment_file(self, guild):
-        # HerokuかRepl.itの時のみ実施
-        if settings.IS_HEROKU or settings.IS_REPLIT:
+        # Herokuの時のみ実施
+        if settings.IS_HEROKU:
             # 環境変数によって、添付ファイルのファイル名を変更する
             file_name = self.aes.ENC_FILE if settings.KEEP_DECRYPTED_FILE else self.DATABASE
             LOG.debug('Heroku mode.start set_discord_attachment_file.')
@@ -370,7 +369,6 @@ class Remind:
             guild = discord.utils.get(self.bot.guilds, id=self.saved_dm_guild)
             await self.set_discord_attachment_file(guild)
 
-
     async def delete_remind_by_id(self, id: int, guild_id: int, guild_flg: bool = False):
         '''BAN的なかんじ'''
         self.decode()
@@ -555,8 +553,10 @@ class Remind:
             if filter is not None and not filter in filter_message:
                 continue
 
-            # all系で実行された場合、Member_IDを付与
-            message += f'No. {row[0]} Remind_datetime: {row[1]}'
+            # all系で実行された場合、Member_IDを付与 & 日付表示
+            tmp_datetime = dateutil.parser.parse(row[1])
+            unixtime = int(tmp_datetime.timestamp())
+            message += f'No. {row[0]} Remind_datetime: <t:{unixtime}:F>'
             if is_all:
                 message += f' Member_ID: <@{row[3]}> \n'
             else:
@@ -579,6 +579,23 @@ class Remind:
             LOG.debug(escaped_mention_text)
         self.encode()
         return row
+
+    def count(self, user_id: int = None, guild_id: int = None):
+        self.decode()
+        conn = sqlite3.connect(self.FILE_PATH)
+        with conn:
+            cur = conn.cursor()
+            select_sql = f'''select count(*) from reminder_table where '''
+            if user_id:
+                select_sql += f'''member = '{user_id}' '''
+            elif guild_id:
+                select_sql += f'''guild = '{guild_id}' '''
+            LOG.debug(select_sql)
+            cur.execute(select_sql)
+            result_count = cur.fetchone()[0]
+            LOG.debug(result_count)
+        self.encode()
+        return result_count
 
     def get_by_owner(self, id: int, status: str = "", guild_id: int = None):
         self.decode()
@@ -647,6 +664,66 @@ class Remind:
             LOG.info(msg)
             guild = discord.utils.get(self.bot.guilds, id=self.saved_dm_guild)
             await self.set_discord_attachment_file(guild)
+
+    async def delete_by_own(self, interaction: discord.Interaction):
+        # 対象が存在するかチェック
+        count = self.count(interaction.user.id)
+        if count == 0:
+            return '対象が存在しないため、何も実行されませんでした'
+
+        self.decode()
+        conn = sqlite3.connect(self.FILE_PATH)
+        with conn:
+            cur = conn.cursor()
+            delete_sql = f'''delete from reminder_table where member = '{interaction.user.id}' '''
+            LOG.debug(delete_sql)
+            cur.execute(delete_sql)
+            LOG.debug('delete reminder by own ')
+            conn.commit()
+            cur.execute('vacuum')
+        self.read()
+        self.encode()
+        guild = interaction.guild
+        if guild is None:
+            guild = self.saved_dm_guild
+        # Herokuの時のみ、チャンネルにファイルを添付する
+        try:
+            await self.set_discord_attachment_file(guild)
+        except discord.errors.Forbidden:
+            msg = f'＊＊＊{guild.name}へのチャンネル作成に失敗したため、dm_guildへ添付します＊＊＊'
+            LOG.info(msg)
+            guild = discord.utils.get(self.bot.guilds, id=self.saved_dm_guild)
+            await self.set_discord_attachment_file(guild)
+        return '自分のremindをすべて削除しました'
+
+    async def delete_guild_by_admin(self, interaction: discord.Interaction):
+        # 対象が存在するかチェック
+        count = self.count(None, interaction.guild.id)
+        if count == 0:
+            return '対象が存在しないため、何も実行されませんでした'
+
+        self.decode()
+        conn = sqlite3.connect(self.FILE_PATH)
+        with conn:
+            cur = conn.cursor()
+            delete_sql = f'''delete from reminder_table where guild = '{interaction.guild.id}' '''
+            LOG.debug(delete_sql)
+            cur.execute(delete_sql)
+            LOG.debug('delete guild reminder by admin ')
+            conn.commit()
+            cur.execute('vacuum')
+        self.read()
+        self.encode()
+        guild = interaction.guild
+        # Herokuの時のみ、チャンネルにファイルを添付する
+        try:
+            await self.set_discord_attachment_file(guild)
+        except discord.errors.Forbidden:
+            msg = f'＊＊＊{guild.name}へのチャンネル作成に失敗したため、dm_guildへ添付します＊＊＊'
+            LOG.info(msg)
+            guild = discord.utils.get(self.bot.guilds, id=self.saved_dm_guild)
+            await self.set_discord_attachment_file(guild)
+        return 'ギルドのremindをすべて削除しました'
 
     def get_last_id(self, conn = None, decode_flg = True):
         if conn is None:

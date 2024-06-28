@@ -3,7 +3,6 @@ from discord.ext import commands
 from logging import basicConfig, getLogger, StreamHandler, FileHandler, Formatter, NOTSET
 from datetime import timedelta, timezone
 import discord, os, datetime, asyncio
-import keep_alive
 
 # 時間
 JST = timezone(timedelta(hours=9), 'JST')
@@ -38,6 +37,7 @@ INITIAL_EXTENSIONS = [
 ]
 
 class DiscordReminderBot(commands.Bot):
+    # 登録数が多い場合は上のやつを commands.AutoShardedBot に変更する
     # DiscordReminderBotのコンストラクタ。
     def __init__(self, command_prefix, intents, application_id):
         # スーパークラスのコンストラクタに値を渡して実行。
@@ -85,5 +85,4 @@ if __name__ == '__main__':
     asyncio.run(main())
 
     # start a server
-    keep_alive.keep_alive()
     asyncio.run(main())
