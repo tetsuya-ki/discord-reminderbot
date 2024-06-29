@@ -51,7 +51,10 @@ class ReminderCog(commands.Cog):
         now = datetime.datetime.now(self.JST)
         LOG.debug(f'printer is kicked.({now})')
 
-        # LOG.info(discord.utils.get(self.bot.get_all_channels()))
+        # 準備が完了していない状態の場合、何もしない
+        if self.remind is None or self.remind.remind_rows is None:
+            LOG.info(f'printer is not ready yet.({now})')
+            return
         for remind in self.remind.remind_rows:
             remind_datetime = dateutil.parser.parse(f'{remind[1]} +0900 (JST)',
                                                     yearfirst=True)
