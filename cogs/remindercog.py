@@ -46,7 +46,7 @@ class ReminderCog(commands.Cog):
     def cog_unload(self):
         self.printer.cancel()
 
-    @tasks.loop(seconds=30.0)
+    @tasks.loop(seconds=20.0)
     async def printer(self):
         now = datetime.datetime.now(self.JST)
         LOG.debug(f'printer is kicked.({now})')
@@ -218,8 +218,8 @@ class ReminderCog(commands.Cog):
                     if repeat_flg == 'NG':
                         continue
 
-                    # 繰り返し時のメッセージを変更(最後の行がURLの場合は繰り返し番号をつけない)
-                    remind_message = self.check_message_last_line_is_url(remind, repeat_count)
+                    # 繰り返し時のメッセージを変更(最大回数が未指定、または、最後の行がURLの場合は繰り返し番号をつけない)
+                    remind_message = self.check_message_max_or_last_line_is_url(remind, repeat_count)
 
                     id = await self.remind.make(remind[2], remind[3], next_remind_datetime, remind_message, remind[4], status, repeat_flg,
                         remind[10], repeat_count, remind[8])
@@ -571,8 +571,8 @@ class ReminderCog(commands.Cog):
         except:
             LOG.warning('コマンドremind_skip中に失敗(おそらく添付用チャンネルの作成、または、添付に失敗)')
 
-        # 繰り返し時のメッセージを変更(最後の行がURLの場合は繰り返し番号をつけない)
-        remind_message = self.check_message_last_line_is_url(row, repeat_count)
+        # 繰り返し時のメッセージを変更(最大回数が未指定、または、最後の行がURLの場合は繰り返し番号をつけない)
+        remind_message = self.check_message_max_or_last_line_is_url(row, repeat_count)
         display_next_remind_datetime = next_remind_datetime.strftime('%Y/%m/%d(%a) %H:%M:%S')
 
         id = await self.remind.make(row[2], row[3], next_remind_datetime, remind_message, row[4], self.remind.STATUS_PROGRESS, repeat_flg,
@@ -1096,11 +1096,12 @@ class ReminderCog(commands.Cog):
                 LOG.warning(f'繰り返し上限に数字以外が登録されました。remind[8]は{remind_repeat_max_str}')
         return repeat_flg
 
-    def check_message_last_line_is_url(self, remind, repeat_count):
+    def check_message_max_or_last_line_is_url(self, remind, repeat_count):
         last_remind_message = re.sub('\(\d+\)','', remind[5])
         last_line_url = re.search(r'https?://[a-zA-Z0-9/:%#\$&?()~.=+_-]+\Z', remind[5])
         remind_message =  remind[5]
-        if repeat_count > 1 and last_line_url is None:
+        # 最大回数設定あり、かつ、繰り返し回数が1を超えており、末尾がURLでない時のみ、繰り返し回数を付与
+        if remind[8] is not None and repeat_count > 1 and last_line_url is None:
             remind_message = f'{last_remind_message}({repeat_count})'
         return remind_message
 

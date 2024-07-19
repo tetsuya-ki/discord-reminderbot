@@ -546,7 +546,7 @@ class Remind:
             channel = f'<#{row[4]}>' if row[4] is not None else 'DM'
             repeat_max = str(row[8]) if row[8] is not None else '設定なし(解除するまで)'
             repeat_interval_message = f'間隔: {row[10]}, ' if row[10] is not None else ''
-            repeat_message = f'あり({repeat_interval_message}最大回数: {repeat_max})' if row[9] == '1' else 'なし'
+            repeat_message = f'あり({repeat_interval_message} {str(row[7])}回目, 最大回数: {repeat_max})' if row[9] == '1' else 'なし'
 
             # フィルタ対象かのチェック
             filter_message = repeat_message+row[5]+str(row[0])+row[1]+str(row[2])+str(row[3])+str(row[4])
