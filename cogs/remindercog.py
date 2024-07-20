@@ -1097,9 +1097,9 @@ class ReminderCog(commands.Cog):
         return repeat_flg
 
     def check_message_max_or_last_line_is_url(self, remind, repeat_count):
-        last_remind_message = re.sub('\(\d+\)','', remind[5])
+        last_remind_message = re.sub('\(\d+?\)$','', remind[5])
         last_line_url = re.search(r'https?://[a-zA-Z0-9/:%#\$&?()~.=+_-]+\Z', remind[5])
-        remind_message =  remind[5]
+        remind_message =  last_remind_message
         # 最大回数設定あり、かつ、繰り返し回数が1を超えており、末尾がURLでない時のみ、繰り返し回数を付与
         if remind[8] is not None and repeat_count > 1 and last_line_url is None:
             remind_message = f'{last_remind_message}({repeat_count})'
