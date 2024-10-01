@@ -265,10 +265,10 @@ class ReminderCog(commands.Cog):
                     LOG.error(f'channelがないので、メッセージ送れませんでした！(No.{id})')
             self.db_queue.task_done()
 
-    @tasks.loop(seconds=30.0)
+    @tasks.loop(seconds=10.0)
     async def make_send_printer(self):
         now = datetime.datetime.now(self.JST)
-        LOG.debug(f'make_send_printer is kicked.({now})')
+        LOG.info(f'make_send_printer is kicked.({now})')
 
         # 準備が完了していない状態の場合、何もしない
         if self.remind is None or self.remind.remind_rows is None:
@@ -296,22 +296,21 @@ class ReminderCog(commands.Cog):
         self.before_time = end
         LOG.info(f'make_send_printer is end.({end} / send_queue:{self.send_queue.qsize()} / db_queue:{self.db_queue.qsize()})')
 
-    @tasks.loop(seconds=20.0)
+    @tasks.loop(seconds=15.0)
     async def send_printer(self):
         now = datetime.datetime.now(self.JST)
-        LOG.info(f'send_printer is kicked.({now})')
 
         # キューが空の場合、何もしない
         if self.send_queue.empty() and self.db_queue.empty():
             LOG.debug(f'send_queue,db_queue is nothing.({now})')
-            return
         else:
+            LOG.info(f'send_printer is kicked.({now})')
             send_task = asyncio.create_task(self.send_by_queue())
             update_task = asyncio.create_task(self.update_by_queue())
             await send_task
             await update_task
-        end = datetime.datetime.now(self.JST)
-        LOG.info(f'send_printer is end.({end})')
+            end = datetime.datetime.now(self.JST)
+            LOG.info(f'send_printer is end.({end})')
 
     @app_commands.command(
         name='remind-make',
