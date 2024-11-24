@@ -284,7 +284,10 @@ class ReminderCog(commands.Cog):
                     LOG.info(f'add remind to send_queue({self.send_queue.qsize()})')
             # ただし、古すぎるものはたまーに対象とする(今までもそうやってきたので)。YURUSU_TIMES(10回)に1回は古いのを処理
             if self.times >= self.YURUSU_TIMES:
-                if self.before_time is not None and remind_datetime < (self.before_time - timedelta(minutes=self.YURUSU_BEFORE_MINUTE)):
+                # 処理が溜まっている場合はやらない
+                if self.db_queue.qsize() > 10:
+                    pass
+                elif self.before_time is not None and remind_datetime < (self.before_time - timedelta(minutes=self.YURUSU_BEFORE_MINUTE)):
                     self.send_queue.put_nowait(remind)
                     LOG.info(f'(yurusu)add remind to send_queue({self.send_queue.qsize()})')
         # 古い時間を許すやつについて加算
