@@ -315,7 +315,8 @@
 ### `/delete-old-remind`
 
 - Botのオーナー(DiscordのBotのトークンを生成した人)のみ使用可能
-- ステータスが「完了」のリマインドをすべて削除(添付ファイルの容量が厳しいため)
+- 指定されたステータスのリマインドをすべて削除(添付ファイルの容量が厳しいため)
+  - ([v1.0.7](https://github.com/tetsuya-ki/discord-reminderbot/releases/tag/v1.0.7))でステータスに変更(元々は「完了」のみだった)
 - もともと`/delete-old-data`だったが、`/delete-old-remind`へ修正([v1.0.5](https://github.com/tetsuya-ki/discord-reminderbot/releases/tag/v1.0.5))
 
 ### `/remind-id-user-delete`

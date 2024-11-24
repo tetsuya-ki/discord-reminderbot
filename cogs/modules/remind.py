@@ -640,15 +640,15 @@ class Remind:
         self.encode()
         return row
 
-    async def delete_old_reminder(self, interaction: discord.Interaction):
+    async def delete_old_reminder(self, interaction: discord.Interaction, status: str = STATUS_FINISHED):
         self.decode()
         conn = sqlite3.connect(self.FILE_PATH)
         with conn:
             cur = conn.cursor()
-            delete_sql = f'''delete from reminder_table where status = '{self.STATUS_FINISHED}' '''
+            delete_sql = f'''delete from reminder_table where status = '{status}' '''
             LOG.debug(delete_sql)
             cur.execute(delete_sql)
-            LOG.debug('delete finished reminder')
+            LOG.info(f'**delete {status} reminder**')
             conn.commit()
             cur.execute('vacuum')
         self.read()
