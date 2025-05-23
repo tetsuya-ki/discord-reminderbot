@@ -284,7 +284,10 @@ class ReminderCog(commands.Cog):
                     LOG.info(f'add remind to send_queue({self.send_queue.qsize()})')
             # ただし、古すぎるものはたまーに対象とする(今までもそうやってきたので)。YURUSU_TIMES(10回)に1回は古いのを処理
             if self.times >= self.YURUSU_TIMES:
-                if self.before_time is not None and remind_datetime < (self.before_time - timedelta(minutes=self.YURUSU_BEFORE_MINUTE)):
+                # 処理が溜まっている場合はやらない
+                if self.db_queue.qsize() > 10:
+                    pass
+                elif self.before_time is not None and remind_datetime < (self.before_time - timedelta(minutes=self.YURUSU_BEFORE_MINUTE)):
                     self.send_queue.put_nowait(remind)
                     LOG.info(f'(yurusu)add remind to send_queue({self.send_queue.qsize()})')
         # 古い時間を許すやつについて加算
@@ -928,22 +931,24 @@ class ReminderCog(commands.Cog):
 
     @app_commands.command(
         name='delete-old-remind',
-        description='<注意>完了したremindをぜんぶ削除する(BotのオーナーのみDMで実行可能です！)')
+        description='<注意>対象ステータスのremindをぜんぶ削除する(BotのオーナーのみDMで実行可能です！)')
     @app_commands.describe(
         reply_is_hidden='Botの実行結果を全員に見せるどうか(リマインド自体は普通です/他の人にもリマインドを使わせたい場合、全員に見せる方がオススメです))')
     async def _delete_old_remind(self,
                             interaction: discord.Interaction,
+                            status: Literal['終了したリマインド(デフォルト)', 'エラーになったリマインド', 'キャンセルしたリマインド'] = '終了したリマインド(デフォルト)',
                             reply_is_hidden: Literal['自分のみ', '全員に見せる'] = SHOW_ME):
         if interaction.user != self.info.owner:
             await interaction.response.send_message('このコマンドはBotのオーナー以外は実行できません', ephemeral = True)
             return
         LOG.info('remindをdelete(owner)するぜ！')
         hidden = True if reply_is_hidden == self.SHOW_ME else False
+        command_status = self.get_command_ownerdel_status(status)
         await interaction.response.defer(ephemeral = hidden)
         self.check_printer_is_running()
 
-        await self.remind.delete_old_reminder(interaction)
-        await interaction.followup.send('ステータスが完了のリマインドを全て削除しました', ephemeral = hidden)
+        await self.remind.delete_old_reminder(interaction, command_status)
+        await interaction.followup.send(f'ステータスが{status}を全て削除しました', ephemeral = hidden)
 
     @app_commands.command(
         name='delete-own-remind',
@@ -1204,6 +1209,16 @@ class ReminderCog(commands.Cog):
             command_status = self.remind.STATUS_DELETED_BY_GUILD
         elif status == 'ギルドで復活されたリマインドリスト':
             command_status = self.remind.STATUS_RECOVERED_BY_GUILD
+        return command_status
+
+    def get_command_ownerdel_status(self, status):
+        command_status = self.remind.STATUS_FINISHED
+        if status == 'キャンセルしたリマインド':
+            command_status = self.remind.STATUS_CANCELED
+        elif status == 'スキップしたリマインド':
+            command_status = self.remind.STATUS_SKIPPED
+        elif status == 'エラーになったリマインド':
+            command_status = self.remind.STATUS_ERROR
         return command_status
 
     async def create_dm(self, user_id):
