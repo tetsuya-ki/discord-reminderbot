@@ -305,7 +305,7 @@ class ReminderCog(commands.Cog):
     async def send_printer(self):
         now = datetime.datetime.now(self.JST)
 
-        # キューが空の場合、何もしない
+        # 送信キューが空の場合、何もしない
         if self.send_queue.empty():
             LOG.debug(f'send_queue is nothing.({now})')
         else:
@@ -319,8 +319,8 @@ class ReminderCog(commands.Cog):
     async def update_printer(self):
         now = datetime.datetime.now(self.JST)
 
-        # キューが空の場合、何もしない
-        if self.db_queue.empty():
+        # 送信キューが空以外、または、DBキューが空の場合、何もしない
+        if not self.send_queue.empty() or self.db_queue.empty():
             LOG.debug(f'db_queue is nothing.({now})')
         else:
             LOG.info(f'update_printer is kicked.({now})')
