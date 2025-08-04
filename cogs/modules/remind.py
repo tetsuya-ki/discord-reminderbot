@@ -201,8 +201,9 @@ class Remind:
 
     def encode(self):
         if os.path.exists(self.aes.DEC_FILE_PATH):
-            self.aes.encode()
+            # KEEPする設定ではない場合は暗号化の上復号されたファイルを削除
             if settings.KEEP_DECRYPTED_FILE:
+                self.aes.encode()
                 os.remove(self.aes.DEC_FILE_PATH)
 
     def read(self, num = 500):
