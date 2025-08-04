@@ -83,6 +83,3 @@ if __name__ == '__main__':
             ,application_id=settings.APPLICATION_ID
         )
     asyncio.run(main())
-
-    # start a server
-    asyncio.run(main())
