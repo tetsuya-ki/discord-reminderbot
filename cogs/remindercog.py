@@ -48,10 +48,12 @@ class ReminderCog(commands.Cog):
         LOG.debug(self.bot.guilds)
         self.make_send_printer.start()
         self.send_printer.start()
+        self.update_printer.start()
 
     def cog_unload(self):
         self.make_send_printer.cancel()
         self.send_printer.cancel()
+        self.update_printer.cancel()
 
     async def send_by_queue(self):
         while True:
@@ -304,16 +306,28 @@ class ReminderCog(commands.Cog):
         now = datetime.datetime.now(self.JST)
 
         # キューが空の場合、何もしない
-        if self.send_queue.empty() and self.db_queue.empty():
-            LOG.debug(f'send_queue,db_queue is nothing.({now})')
+        if self.send_queue.empty():
+            LOG.debug(f'send_queue is nothing.({now})')
         else:
             LOG.info(f'send_printer is kicked.({now})')
             send_task = asyncio.create_task(self.send_by_queue())
-            update_task = asyncio.create_task(self.update_by_queue())
             await send_task
-            await update_task
             end = datetime.datetime.now(self.JST)
             LOG.info(f'send_printer is end.({end})')
+
+    @tasks.loop(seconds=20.0)
+    async def update_printer(self):
+        now = datetime.datetime.now(self.JST)
+
+        # キューが空の場合、何もしない
+        if self.db_queue.empty():
+            LOG.debug(f'db_queue is nothing.({now})')
+        else:
+            LOG.info(f'update_printer is kicked.({now})')
+            update_task = asyncio.create_task(self.update_by_queue())
+            await update_task
+            end = datetime.datetime.now(self.JST)
+            LOG.info(f'update_printer is end.({end})')
 
     @app_commands.command(
         name='remind-make',
@@ -369,9 +383,9 @@ class ReminderCog(commands.Cog):
             await interaction.followup.send(error_message, ephemeral=False)
             return
 
-        # 分指定チェック(分指定の場合は5回以下である必要がある)
+        # 分指定チェック(分指定の場合は5回以下である必要がある) *緩和措置したがあとで見直すかも
         if repeat_interval is not None and \
-            re.search('mi', repeat_interval, flags=re.IGNORECASE) and \
+            re.search('^[0-6]?[0-9]mi', repeat_interval, flags=re.IGNORECASE) and \
             (repeat_max_count is None or (repeat_max_count is not None and repeat_max_count > 5)):
             error_message = '分指定(**XXmi**)の場合は必ず5回以下の繰り返し回数を指定してください'
             LOG.info(error_message)
@@ -1121,6 +1135,10 @@ class ReminderCog(commands.Cog):
             msg = 'Task(send_printer)が停止していたので再起動します。'
             LOG.info(msg)
             self.send_printer.start()
+        if not self.update_printer.is_running():
+            msg = 'Task(update_printer)が停止していたので再起動します。'
+            LOG.info(msg)
+            self.update_printer.start()
 
     def check_date_and_convert(self, date:str, base_date=None):
         if base_date is None:
