@@ -214,7 +214,7 @@ class ReminderCog(commands.Cog):
                 LOG.info(f'update_by_queue is end.({end} / db_queue:{self.db_queue.qsize()})')
                 break
 
-            remind_datetime = dateutil.parser.parse(f'{remind[1]} +0900 (JST)', yearfirst=True)
+            remind_datetime = dateutil.parser.parse(f'{remind[1]}', yearfirst=True)
             try:
                 await self.remind.update_status(remind[0], remind[2], self.remind.STATUS_FINISHED)
             except:
@@ -277,8 +277,7 @@ class ReminderCog(commands.Cog):
             LOG.info(f'make_send_printer is not ready yet.({now})')
             return
         for remind in self.remind.remind_rows:
-            remind_datetime = dateutil.parser.parse(f'{remind[1]} +0900 (JST)',
-                                                    yearfirst=True)
+            remind_datetime = dateutil.parser.parse(f'{remind[1]}', yearfirst=True)
             # リマインドを送信キューに追加(remind_datetimeが現在以前、かつ、(前回実行なしor前回実行よりremind_datetimeが後))
             if remind_datetime <= now:
                 if self.before_time is None or remind_datetime > self.before_time:
@@ -305,7 +304,7 @@ class ReminderCog(commands.Cog):
     async def send_printer(self):
         now = datetime.datetime.now(self.JST)
 
-        # キューが空の場合、何もしない
+        # 送信キューが空の場合、何もしない
         if self.send_queue.empty():
             LOG.debug(f'send_queue is nothing.({now})')
         else:
@@ -319,8 +318,8 @@ class ReminderCog(commands.Cog):
     async def update_printer(self):
         now = datetime.datetime.now(self.JST)
 
-        # キューが空の場合、何もしない
-        if self.db_queue.empty():
+        # 送信キューが入っている場合、または、DBキューが空の場合、何もしない
+        if not self.send_queue.empty() or self.db_queue.empty():
             LOG.debug(f'db_queue is nothing.({now})')
         else:
             LOG.info(f'update_printer is kicked.({now})')
@@ -345,6 +344,8 @@ class ReminderCog(commands.Cog):
     @app_commands.describe(
         channel='リマインドを投稿するチャンネル(#general等。「DM」でBotとのDMへ登録されます。未指定の場合はリマインド登録したチャンネルに投稿)')
     @app_commands.describe(
+        time_difference='Time difference with utc(e.g. specify 0 for UK time. Specify -8 for San Francisco and 9 for Japan (default).)')
+    @app_commands.describe(
         silent='こっそり送信(メッセージに@silentでも可)')
     @app_commands.describe(
         reply_is_hidden='Botの実行結果を全員に見せるどうか(リマインド自体は普通です/他の人にもリマインドを使わせたい場合、全員に見せる方がオススメです))')
@@ -356,6 +357,7 @@ class ReminderCog(commands.Cog):
                         repeat_interval: str = None,
                         repeat_max_count: app_commands.Range[int, 1, 999] = None,
                         channel: str = None,
+                        time_difference: app_commands.Range[int, -12, 14] = 9,
                         silent: Literal['ふつう', 'こっそり'] = NOT_SILENT,
                         reply_is_hidden: Literal['自分のみ', '全員に見せる'] = SHOW_ME):
         LOG.info('remindをmakeするぜ！')
@@ -392,10 +394,15 @@ class ReminderCog(commands.Cog):
             await interaction.followup.send(error_message, ephemeral=False)
             return
 
+        # タイムゾーン設定(0を超える場合はプラスをつける)
+        time_difference_str = time_difference
+        if time_difference > 0:
+            time_difference_str = f"+{time_difference}"
+
         # dateの確認&変換
-        date = self.check_date_and_convert(date)
+        date = self.check_date_and_convert(date, time_difference)
         # 時間の変換
-        time, add_day = self.check_time_and_convert(time)
+        time, add_day = self.check_time_and_convert(time, time_difference)
         if time == 'NG':
             error_message = '不正な時間のため、リマインドを登録できませんでした'
             LOG.info(error_message)
@@ -406,11 +413,12 @@ class ReminderCog(commands.Cog):
         remind_datetime = None
         try:
             remind_datetime = dateutil.parser.parse(
-                f'{date} {time} +0900 (JST)', yearfirst=True)
+                f'{date} {time} {time_difference_str}', yearfirst=True)
+            LOG.debug(remind_datetime)
             # 1日加算の処理
             remind_datetime = remind_datetime + relativedelta(days=+int(add_day))
         except ValueError as e:
-            error_message = '不正な日時のため、リマインドを登録できませんでした'
+            error_message = f'不正な日時のため、リマインドを登録できませんでした -> {date} {time} {time_difference_str}'
             LOG.info(error_message)
             LOG.info(e)
             await interaction.followup.send(error_message, ephemeral=True)
@@ -579,12 +587,15 @@ class ReminderCog(commands.Cog):
     @app_commands.describe(
         next_time='リマインド再開時間。時間(hh24:mi形式)、もしくは、xxh(xxは数字(0-9)。xx時間後)、xxmi(xx分後)')
     @app_commands.describe(
+        time_difference='Time difference with utc(e.g. specify 0 for UK time. Specify -8 for San Francisco and 9 for Japan (default).)')
+    @app_commands.describe(
         reply_is_hidden='Botの実行結果を全員に見せるどうか(リマインド自体は普通です/他の人にもリマインドを使わせたい場合、全員に見せる方がオススメです))')
     async def remind_skip(self,
                         interaction: discord.Interaction,
                         skip_no: app_commands.Range[int, 1, 999999999999],
                         next_date: str = None,
                         next_time: str = None,
+                        time_difference: app_commands.Range[int, -12, 14] = 9,
                         reply_is_hidden: Literal['自分のみ', '全員に見せる'] = SHOW_ME):
         LOG.info('remindをskipするぜ！')
         hidden = True if reply_is_hidden == self.SHOW_ME else False
@@ -612,11 +623,16 @@ class ReminderCog(commands.Cog):
         if next_date is None and next_time is None:
             next_time = '1mi'
 
+        # タイムゾーン設定(0を超える場合はプラスをつける)
+        time_difference_str = time_difference
+        if time_difference > 0:
+            time_difference_str = f"+{time_difference}"
+
         # リマインド日付の変換
         remind_datetime = None
         try:
             remind_datetime = dateutil.parser.parse(
-                f'{row[1]} +0900 (JST)', yearfirst=True)
+                f'{row[1]} {time_difference_str}', yearfirst=True)
         except ValueError as e:
             LOG.info(error_message)
             LOG.info(e)
@@ -626,7 +642,7 @@ class ReminderCog(commands.Cog):
         # dateの確認&変換
         if next_date is None:
             next_date = remind_datetime.strftime('%Y-%m-%d')
-        date = self.check_date_and_convert(next_date, remind_datetime)
+        date = self.check_date_and_convert(next_date, time_difference, remind_datetime)
         # 時間の変換
         if next_time is None:
             next_time = remind_datetime.strftime('%H:%M')
@@ -641,7 +657,7 @@ class ReminderCog(commands.Cog):
         next_remind_datetime = None
         try:
             next_remind_datetime = dateutil.parser.parse(
-                f'{date} {time} +0900 (JST)', yearfirst=True)
+                f'{date} {time} {time_difference_str}', yearfirst=True)
             # 1日加算の処理
             next_remind_datetime = next_remind_datetime + relativedelta(days=+int(add_day))
         except ValueError as e:
@@ -1140,9 +1156,10 @@ class ReminderCog(commands.Cog):
             LOG.info(msg)
             self.update_printer.start()
 
-    def check_date_and_convert(self, date:str, base_date=None):
+    def check_date_and_convert(self, date:str, time_difference=9, base_date=None):
+        tz=timezone(timedelta(hours=time_difference))
         if base_date is None:
-            base_date = datetime.datetime.now(self.JST).date()
+            base_date = datetime.datetime.now(tz).date()
         if re.match(r'[0-9]{4}-[0-9]{1,2}-[0-9]{1,2}', date) \
         or re.match(r'[0-9]{4}/[0-9]{1,2}/[0-9]{1,2}', date) \
         or re.match(r'[0-9]{8}', date):
@@ -1160,11 +1177,12 @@ class ReminderCog(commands.Cog):
             date = base_date + relativedelta(days=+int(date))
         return date
 
-    def check_time_and_convert(self, time:str, base_time=None):
+    def check_time_and_convert(self, time:str, time_difference=9,  base_time=None):
+        tz=timezone(timedelta(hours=time_difference))
         add_day = 0
         result_time = None
         if base_time is None:
-            base_time = datetime.datetime.now(self.JST)
+            base_time = datetime.datetime.now(tz)
         m_hours = re.match('^([0-9]{1,3})h$', time)
         m_minutes = re.match('^([0-9]{1,4})mi$', time)
         m_normal = re.match('^([0-9]{1,2}:[0-9]{1,2})$', time)
