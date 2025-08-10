@@ -214,9 +214,10 @@ class ReminderCog(commands.Cog):
                 LOG.info(f'update_by_queue is end.({end} / db_queue:{self.db_queue.qsize()})')
                 break
 
+            # 処理したリマインドを完了にする(読み込みなし)
             remind_datetime = dateutil.parser.parse(f'{remind[1]} +0900 (JST)', yearfirst=True)
             try:
-                await self.remind.update_status(remind[0], remind[2], self.remind.STATUS_FINISHED)
+                await self.remind.update_status(remind[0], remind[2], self.remind.STATUS_FINISHED, False)
             except:
                 LOG.warning('リマインドを削除/update中に失敗(リマインドを削除/おそらく添付用チャンネルの作成、または、添付に失敗)')
                 continue
@@ -255,8 +256,9 @@ class ReminderCog(commands.Cog):
                 # 繰り返し時のメッセージを変更(最大回数が未指定、または、最後の行がURLの場合は繰り返し番号をつけない)
                 remind_message = self.check_message_max_or_last_line_is_url(remind, repeat_count)
 
+                # 繰り返し用のリマインドを作成(読み込みなし)
                 id = await self.remind.make(remind[2], remind[3], next_remind_datetime, remind_message, remind[4], self.remind.STATUS_PROGRESS, repeat_flg,
-                    remind[10], repeat_count, remind[8])
+                    remind[10], repeat_count, remind[8], False)
                 try:
                     # 返信にリマインド予定日時記載(<t:unix時間:F>でいい感じに表示)
                     msg = f'次回のリマインドを登録しました(No.{id})\nリマインド予定日時: <t:{int(next_remind_datetime.timestamp())}:F>'
@@ -326,6 +328,7 @@ class ReminderCog(commands.Cog):
             LOG.info(f'update_printer is kicked.({now})')
             update_task = asyncio.create_task(self.update_by_queue())
             await update_task
+            self.remind.decode_and_read()
             end = datetime.datetime.now(self.JST)
             LOG.info(f'update_printer is end.({end})')
 
