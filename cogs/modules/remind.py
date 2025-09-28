@@ -51,6 +51,7 @@ class Remind:
             with conn:
                 cur = conn.cursor()
 
+                # reminder_tableが存在しない場合はテーブル作成
                 create_table_sql = '''
                                     create table if not exists reminder_table (
                                         id integer primary key autoincrement,
@@ -65,10 +66,24 @@ class Remind:
                                         repeat_flg text,
                                         repeat_interval text,
                                         created_at datetime,
-                                        updated_at datetime
+                                        updated_at datetime,
+                                        no_reply text
                                     )
                                     '''
                 cur.execute(create_table_sql)
+
+                # カラムの確認および追加(no_reply)
+                alter_remindertable_add_noreply_sql = '''alter table reminder_table add column 'no_reply' '''
+                check_sql = '''PRAGMA table_info('reminder_table')'''
+                cur.execute(check_sql)
+                need_alter_table = True
+                result = cur.fetchall()
+                for column in result:
+                    if column[1] == 'no_reply':
+                        need_alter_table = False
+                if need_alter_table:
+                    LOG.info('need_alter_table is ' + str(need_alter_table))
+                    cur.execute(alter_remindertable_add_noreply_sql)
         else:
             self.decode()
         self.read()
@@ -224,7 +239,7 @@ class Remind:
 
     async def make(self, guild_id, author_id, remind_datetime: datetime,
             remind_message: str, channel: int, status: str, repeat_flg: str,
-            repeat_interval: str, repeat_count: int=1, repeat_max_count:int=None, read_flg=True):
+            repeat_interval: str, repeat_count: int=1, repeat_max_count:int=None, no_reply=None,read_flg=True):
         '''remindを作成'''
         self.decode()
         conn = sqlite3.connect(self.FILE_PATH)
@@ -234,10 +249,10 @@ class Remind:
 
             now = datetime.datetime.now(self.JST)
 
-            insert_sql = 'INSERT INTO reminder_table (remind_datetime,guild,member,channel,remind_message,status,repeat_count,repeat_max_count,repeat_flg,repeat_interval,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)'
+            insert_sql = 'INSERT INTO reminder_table (remind_datetime,guild,member,channel,remind_message,status,repeat_count,repeat_max_count,repeat_flg,repeat_interval,no_reply,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)'
             remind_param = (remind_datetime, guild_id, author_id,
                             channel, remind_message, status, repeat_count, repeat_max_count,
-                            repeat_flg, repeat_interval, now, now)
+                            repeat_flg, repeat_interval, no_reply, now, now)
 
             # Insert a row of data
             cur.execute(insert_sql, remind_param)
@@ -555,6 +570,7 @@ class Remind:
             repeat_max = str(row[8]) if row[8] is not None else '設定なし(解除するまで)'
             repeat_interval_message = f'間隔: {row[10]}, ' if row[10] is not None else ''
             repeat_message = f'あり({repeat_interval_message} {str(row[7])}回目, 最大回数: {repeat_max})' if row[9] == '1' else 'なし'
+            repeat_message += f', **返信なし** ' if row[13] is not None else '' # 返信なし表示
 
             # フィルタ対象かのチェック
             filter_message = repeat_message+row[5]+str(row[0])+row[1]+str(row[2])+str(row[3])+str(row[4])
