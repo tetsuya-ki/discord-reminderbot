@@ -201,8 +201,9 @@ class Remind:
 
     def encode(self):
         if os.path.exists(self.aes.DEC_FILE_PATH):
-            self.aes.encode()
+            # KEEPする設定ではない場合は暗号化の上復号されたファイルを削除
             if settings.KEEP_DECRYPTED_FILE:
+                self.aes.encode()
                 os.remove(self.aes.DEC_FILE_PATH)
 
     def read(self, num = 500):
@@ -217,9 +218,13 @@ class Remind:
             LOG.info(f'＊＊＊＊＊＊読み込みが完了しました({len(self.remind_rows)}件)＊＊＊＊＊＊')
             LOG.debug(self.remind_rows)
 
+    def decode_and_read(self):
+        self.decode()
+        self.read()
+
     async def make(self, guild_id, author_id, remind_datetime: datetime,
             remind_message: str, channel: int, status: str, repeat_flg: str,
-            repeat_interval: str, repeat_count: int=1, repeat_max_count:int=None):
+            repeat_interval: str, repeat_count: int=1, repeat_max_count:int=None, read_flg=True):
         '''remindを作成'''
         self.decode()
         conn = sqlite3.connect(self.FILE_PATH)
@@ -242,8 +247,9 @@ class Remind:
             id = self.get_last_id(conn, False)
             LOG.debug(f'id:{id}を追加しました')
             conn.commit()
+        if read_flg:
             self.read()
-        self.encode()
+            self.encode()
 
         # 添付対象のギルドの決定
         if guild_id is None:
@@ -262,7 +268,7 @@ class Remind:
 
         return id
 
-    async def update_status(self, remind_id: int, guild_id: int, status: str=STATUS_FINISHED):
+    async def update_status(self, remind_id: int, guild_id: int, status: str=STATUS_FINISHED, read_flg:bool=True):
         '''remindのステータスを変更'''
         self.decode()
 
@@ -276,8 +282,10 @@ class Remind:
             conn.execute(update_sql, remind_param)
             conn.commit()
             LOG.info(f'id:{remind_id}を{status}にしました')
-        self.read()
-        self.encode()
+        # 読み込みフラグがTrueの場合だけ、read&encodeする(何回も更新する場合は非効率なのでSKIP)
+        if read_flg:
+            self.read()
+            self.encode()
 
         # 添付対象のギルドの決定
         if guild_id is None:
