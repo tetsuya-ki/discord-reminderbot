@@ -10,6 +10,7 @@
 - 上記Botの運営でお金がかかるので、[PIXIV FANBOXで支援を募ってみる](https://marukot-chan.fanbox.cc/posts/5541410)ことにしました
   - とくに支援しなくても全機能使えますが、支援してくださったらサーバーをクラウドにする等できるかもしれません
   - 支援がない場合でも可能な限り運営しますが、いつでも停止/一時停止される可能性があります
+  - 支援者が数人いらっしゃったので、[v1.0.7](https://github.com/tetsuya-ki/discord-reminderbot/releases/tag/v1.0.7)で追加でno_replyオプションを実装
 
 ## 利用者向け機能
 
@@ -114,6 +115,10 @@
       - こっそりしたメッセージです。深夜帯や早朝にオススメ
       - discord曰く、「メッセージをそっと静かに送信」。受信者に通知の点は表示されます、アラートはありません、とのこと(プッシュ通知やデスクトップ通知されない)
     - [v1.0.1](https://github.com/tetsuya-ki/discord-reminderbot/releases/tag/v1.0.1)で追加
+  - no_reply(次回リマインドの返信なし)
+    - 通常だと次回のリマインド予定を通知しますが、これを不要とするオプションです
+      - 本当にリマインドが登録されているかはよくわからない状態になるので、適宜remind-listで確認ください
+    - [v1.0.7](https://github.com/tetsuya-ki/discord-reminderbot/releases/tag/v1.0.7)で追加
   - reply_is_hidden
     - 自分のみ
       - 実行結果は自分だけ見ることができます
