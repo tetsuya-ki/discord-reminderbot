@@ -19,6 +19,7 @@ class ReminderCog(commands.Cog):
     NUM_1to3keta = '^[0-9]{1,3}$'
     SHOW_ME = '自分のみ'
     NOT_SILENT = 'ふつう'
+    NO_REPLY = '返信しない'
     YURUSU_BEFORE_MINUTE = 30
     YURUSU_TIMES = 15
 
@@ -75,7 +76,7 @@ class ReminderCog(commands.Cog):
                 silent_flg = True
             # ギルド対象、かつ、:xxxx:である場合、Sticker(スタンプ)の取得
             sticker_list = []
-            if remind[2] and re.search(':\w+:', msg):
+            if remind[2] and re.search(r':\w+:', msg):
                 # Sticker取得のため、ギルドの取得
                 try:
                     guild = await self.bot.fetch_guild(remind[2])
@@ -84,7 +85,7 @@ class ReminderCog(commands.Cog):
                         # 文章にStickerが含まれていれば、Stickerリストに追加し、文章から削除
                         if re.search(f':{sticker.name}:', msg, flags=re.IGNORECASE):
                             sticker_list.append(sticker)
-                            msg = re.sub(f' *<?:{sticker.name}:(\d*)>? *', '', msg, flags=re.IGNORECASE)
+                            msg = re.sub(f' *<?:{sticker.name}:(\\d*)>? *', '', msg, flags=re.IGNORECASE)
                             if len(sticker_list) >= 3:
                                 break
                 except:
@@ -106,6 +107,10 @@ class ReminderCog(commands.Cog):
                         msg = f'＊＊＊さらに、{remind[2]}のチャンネル({self.remind.REMIND_CONTROL_CHANNEL})への投稿に失敗しました(フェッチ失敗投稿後)！＊＊＊'
                         LOG.error(msg)
                         continue
+
+            # 繰り返し処理の終了の通知
+            if remind[9] == '0' and remind[10] is not None and remind[7] == remind[8]:
+                msg = msg + '**<繰り返し処理終了>**'
 
             # DMの対応
             if remind[2] is None:
@@ -258,15 +263,20 @@ class ReminderCog(commands.Cog):
 
                 # 繰り返し用のリマインドを作成(読み込みなし)
                 id = await self.remind.make(remind[2], remind[3], next_remind_datetime, remind_message, remind[4], self.remind.STATUS_PROGRESS, repeat_flg,
-                    remind[10], repeat_count, remind[8], False)
-                try:
-                    # 返信にリマインド予定日時記載(<t:unix時間:F>でいい感じに表示)
-                    msg = f'次回のリマインドを登録しました(No.{id})\nリマインド予定日時: <t:{int(next_remind_datetime.timestamp())}:F>'
-                    await remind_msg.reply(msg, silent=True)
-                except:
-                    # 投稿に失敗した場合は登録を削除してしまう
-                    await self.remind.update_status(id, remind[2], self.remind.STATUS_ERROR)
-                    LOG.error(f'channelがないので、メッセージ送れませんでした！(No.{id})')
+                    remind[10], repeat_count, remind[8], remind[13], False)
+
+                # remind[13](no_reply)がNoneや空文字の場合、次のリメインドについて通知
+                reply_msg = f'次回のリマインドを登録しました(No.{id})\nリマインド予定日時: <t:{int(next_remind_datetime.timestamp())}:F>'
+                if remind[13] is None or remind[13] == '':
+                    try:
+                        # 返信にリマインド予定日時記載(<t:unix時間:F>でいい感じに表示)
+                        await remind_msg.reply(reply_msg, silent=True)
+                    except:
+                        # 投稿に失敗した場合は登録を削除してしまう
+                        await self.remind.update_status(id, remind[2], self.remind.STATUS_ERROR)
+                        LOG.error(f'channelがないので、メッセージ送れませんでした！(No.{id})')
+                else:
+                    LOG.error(f'返信なし(no_reply): {next_remind_datetime}->{reply_msg}')
             self.db_queue.task_done()
 
     @tasks.loop(seconds=10.0)
@@ -350,6 +360,8 @@ class ReminderCog(commands.Cog):
     @app_commands.describe(
         silent='こっそり送信(メッセージに@silentでも可)')
     @app_commands.describe(
+        noreply='リマインドの繰り返し時の返信なし(次回通知はremid-listで状況確認が必要となることに注意)')
+    @app_commands.describe(
         reply_is_hidden='Botの実行結果を全員に見せるどうか(リマインド自体は普通です/他の人にもリマインドを使わせたい場合、全員に見せる方がオススメです))')
     async def _remind_make(self,
                         interaction: discord.Interaction,
@@ -360,6 +372,7 @@ class ReminderCog(commands.Cog):
                         repeat_max_count: app_commands.Range[int, 1, 999] = None,
                         channel: str = None,
                         silent: Literal['ふつう', 'こっそり'] = NOT_SILENT,
+                        noreply: Literal['返信しない'] = None,
                         reply_is_hidden: Literal['自分のみ', '全員に見せる'] = SHOW_ME):
         LOG.info('remindをmakeするぜ！')
         hidden = True if reply_is_hidden == self.SHOW_ME else False
@@ -505,7 +518,7 @@ class ReminderCog(commands.Cog):
         # 実際の処理(remind.pyでやる)
         try:
             id = await self.remind.make(guild_id, interaction.user.id, remind_datetime, message, channel_id, status, repeat_flg,
-                            repeat_interval, repeat_count, repeat_max_count)
+                            repeat_interval, repeat_count, repeat_max_count, noreply)
         except:
             # 失敗した場合自分で最後のidを取得
             id = self.remind.get_last_id()
@@ -673,7 +686,7 @@ class ReminderCog(commands.Cog):
         display_next_remind_datetime = next_remind_datetime.strftime('%Y/%m/%d(%a) %H:%M:%S')
 
         id = await self.remind.make(row[2], row[3], next_remind_datetime, remind_message, row[4], self.remind.STATUS_PROGRESS, repeat_flg,
-            row[10], repeat_count, row[8])
+            row[10], repeat_count, row[8], row[13])
         skip_msg = f'リマインドを1回スキップしました(No.{skip_no})\n次回のリマインドを登録しました(No.{id})\n再開日時: {display_next_remind_datetime}'
         try:
             await interaction.followup.send(skip_msg, ephemeral = hidden)
@@ -1204,7 +1217,7 @@ class ReminderCog(commands.Cog):
         return repeat_flg
 
     def check_message_max_or_last_line_is_url(self, remind, repeat_count):
-        last_remind_message = re.sub('\(\d+?\)$','', remind[5])
+        last_remind_message = re.sub(r'\(\d+?\)$','', remind[5])
         last_line_url = re.search(r'https?://[a-zA-Z0-9/:%#\$&?()~.=+_-]+\Z', remind[5])
         remind_message =  last_remind_message
         # 最大回数設定あり、かつ、繰り返し回数が1を超えており、末尾がURLでない時のみ、繰り返し回数を付与
