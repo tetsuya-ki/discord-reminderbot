@@ -46,46 +46,49 @@ class Remind:
         # Herokuの時のみ、チャンネルからファイルを取得する
         await self.get_discord_attachment_file()
 
-        if not os.path.exists(self.aes.ENC_FILE_PATH):
-            conn = sqlite3.connect(self.FILE_PATH)
-            with conn:
-                cur = conn.cursor()
-
-                # reminder_tableが存在しない場合はテーブル作成
-                create_table_sql = '''
-                                    create table if not exists reminder_table (
-                                        id integer primary key autoincrement,
-                                        remind_datetime datetime,
-                                        guild integer,
-                                        member integer,
-                                        channel integer,
-                                        remind_message text,
-                                        status text,
-                                        repeat_count integer,
-                                        repeat_max_count integer,
-                                        repeat_flg text,
-                                        repeat_interval text,
-                                        created_at datetime,
-                                        updated_at datetime,
-                                        no_reply text
-                                    )
-                                    '''
-                cur.execute(create_table_sql)
-
-                # カラムの確認および追加(no_reply)
-                alter_remindertable_add_noreply_sql = '''alter table reminder_table add column 'no_reply' '''
-                check_sql = '''PRAGMA table_info('reminder_table')'''
-                cur.execute(check_sql)
-                need_alter_table = True
-                result = cur.fetchall()
-                for column in result:
-                    if column[1] == 'no_reply':
-                        need_alter_table = False
-                if need_alter_table:
-                    LOG.info('need_alter_table is ' + str(need_alter_table))
-                    cur.execute(alter_remindertable_add_noreply_sql)
-        else:
+        # 暗号化されている場合は復号しておく
+        if os.path.exists(self.aes.ENC_FILE_PATH):
             self.decode()
+
+        # テーブルの存在確認、および、カラムの存在確認(なければ作る)
+        conn = sqlite3.connect(self.FILE_PATH)
+        with conn:
+            cur = conn.cursor()
+            # reminder_tableが存在しない場合はテーブル作成
+            create_table_sql = '''
+                                create table if not exists reminder_table (
+                                    id integer primary key autoincrement,
+                                    remind_datetime datetime,
+                                    guild integer,
+                                    member integer,
+                                    channel integer,
+                                    remind_message text,
+                                    status text,
+                                    repeat_count integer,
+                                    repeat_max_count integer,
+                                    repeat_flg text,
+                                    repeat_interval text,
+                                    created_at datetime,
+                                    updated_at datetime,
+                                    no_reply text
+                                )
+                                '''
+            cur.execute(create_table_sql)
+
+            # カラムの確認および追加(no_reply)
+            alter_remindertable_add_noreply_sql = '''alter table reminder_table add column 'no_reply' '''
+            check_sql = '''PRAGMA table_info('reminder_table')'''
+            cur.execute(check_sql)
+            need_alter_table = True
+            result = cur.fetchall()
+            for column in result:
+                if column[1] == 'no_reply':
+                    need_alter_table = False
+            if need_alter_table:
+                LOG.info('need_alter_table is ' + str(need_alter_table))
+                cur.execute(alter_remindertable_add_noreply_sql)
+
+        # 読み込み作業
         self.read()
         self.encode()
         LOG.info('準備完了')
