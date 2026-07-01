@@ -375,6 +375,8 @@ class ReminderCog(commands.Cog):
                         noreply: Literal['返信しない'] = None,
                         reply_is_hidden: Literal['自分のみ', '全員に見せる'] = SHOW_ME):
         LOG.info('remindをmakeするぜ！')
+        if repeat_max_count is not None:
+            repeat_max_count = int(repeat_max_count)
         hidden = True if reply_is_hidden == self.SHOW_ME else False
         silent_mode = True if silent != self.NOT_SILENT else False
         self.check_printer_is_running()
