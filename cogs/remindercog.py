@@ -276,7 +276,7 @@ class ReminderCog(commands.Cog):
                         await self.remind.update_status(id, remind[2], self.remind.STATUS_ERROR)
                         LOG.error(f'channelがないので、メッセージ送れませんでした！(No.{id})')
                 else:
-                    LOG.error(f'返信なし(no_reply): {next_remind_datetime}->{reply_msg}')
+                    LOG.info(f'返信なし(no_reply): {next_remind_datetime}->{reply_msg}')
             self.db_queue.task_done()
 
     @tasks.loop(seconds=10.0)

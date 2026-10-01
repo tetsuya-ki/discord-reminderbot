@@ -17,3 +17,4 @@ services:
       - PRIORITY_GUILD=__あなたのGuild_IDを入力(数字)__
       - REMIND_CONTROL_CHANNEL_NAME=remind_control_channel
       - APPLICATION_ID = "99999999"
+      - ENABLE_SYSTEMD_HEARTBEAT=FALSE

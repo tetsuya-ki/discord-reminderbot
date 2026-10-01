@@ -413,6 +413,11 @@
     - 1件の場合: ENABLE_SLASH_COMMAND_GUILD_ID=18471289371923
     - 2件の場合: ENABLE_SLASH_COMMAND_GUILD_ID=18471289371923;1389103890128390
 
+### ENABLE_SYSTEMD_HEARTBEAT
+
+- systemdのハートビートを使うかどうか(systemdでこのBotを動かす場合のみTRUEにすること！)
+  - systemdで動かす時、ハートビートを行うことで処理が落ちてる時に再起動することが可能
+
 ### 廃止された環境変数
 
 - `ENABLE_SLASH_COMMAND_GUILD_ID_LIST`: ENABLE_SLASH_COMMAND_GUILD_IDに置き換えられました

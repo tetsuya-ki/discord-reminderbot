@@ -3,6 +3,7 @@ name = "discord-reminderbot"
 version = "0.1.0"
 description = "test"
 authors = ["tetsuya-k <64536338+tetsuya-ki@users.noreply.github.com>"]
+package-mode = false
 
 [tool.poetry.dependencies]
 python = "^3.8"
