@@ -20,6 +20,7 @@ yarl = "^1.5.1"
 toml = "^0.10.2"
 pycryptodome = "^3.10.1"
 markupsafe = "2.0.1"
+sdnotify = "^0.3.2"
 
 [tool.poetry.dev-dependencies]
 
